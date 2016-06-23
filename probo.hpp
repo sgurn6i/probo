@@ -17,54 +17,53 @@ namespace Probo
   class Body : public Pfamily::Parent
   {
   public:
-    Body();
+    Body(const std::string& name = "Body");
     virtual ~Body();
     int do_em_in(double time); /* time(ms)の間に、targetまで進め */
-    Joint * create_joint(Controller * ct, int number,
-                         const std::string& name = "");
-    int add_controller(Controller * ct);
-    int remove_controller(Controller * ct);
     Controller * get_controller(int n);
-    int get_controller_amt(){ return (int)m_controllers.size(); }
+    virtual Controller * create_controller(const std::string& name = "ct");
+    int set_tick(double tick);
+    double get_tick() const { return m_tick; }
+    void reset_time();  /* 現在時刻をリセット。 */
   private:
-    std::vector <Controller *> m_controllers;
-    std::vector <Joint *> m_joints;
+    int make_go_target_at(double percent);
+    int make_update_pos();
+    double m_tick = 20.0;  /* 単位時間(ms) */
     double m_time_prev;   /* 前回の時刻(ms) */
-    double m_time_to_target;  /* m_time_prev から target に達する時間。 */
   };
 
-  class Controller
+  class Controller :
+    public Pfamily::Parent, 
+    public Pfamily::Child 
   {
   public:
-    friend class Body;
-    Controller(){ /* Todo: 中身 */ }
-    virtual ~Controller(){ /* Todo: 中身 */ }
-    Body * get_body(){ return m_body; }
+    Controller(Body& body, int sn, const std::string& name) :
+      Pfamily::Parent::Parent(name),
+      Pfamily::Child::Child(body,sn,name){ }
+    virtual ~Controller(){ }
+    virtual int go_target_at(double percent); /* ターゲットのpercent % まで進め */
+    virtual void update_pos(); /* previous position を現在位置にアップデートせよ。 */
+    Body& get_body() const { return (Body&)get_parent(); }
+    virtual Joint * create_joint(const std::string& name = "j");
   private:
-    Body * m_body = NULL;  /* 所属Body */
-    int set_body(Body * body);
   };
-  
-  class Joint
+
+  class Joint :
+    public Pfamily::Child
   {
   public:
-    friend class Body;
-    virtual ~Joint();
-    int set_name(const char * name);
+    Joint(Controller& controller, int sn, const std::string& name) :
+      Pfamily::Child::Child(controller,sn,name){ }
+    virtual ~Joint(){}
     int target(double pos);   /* ターゲットposition設定。 */
-    /* Bodyからの指令。 */
-    int do_to(double ratio);  /* ターゲットの ratioの割合まで進め。 */
+    /* Controllerからの指令。 */
+    virtual int go_target_at(double percent);
+    virtual void update_pos();
   private:
-    Joint(){ } /* 使わない */
-    Joint(Body * body, Controller * ct, int number,
-          const std::string& name);
-    Body * m_body = NULL;  /* 所属Body */
-    Controller * m_controller;
-    int m_num;   // サーボ番号
-    std::string m_name; // 名前(オプション)
-    double m_target_pos;
-    double m_prev_pos;  // 過去位置、動作開始時の位置。
-    double m_curr_pos;  // 現在位置
+    int m_servo_n;   // サーボ番号
+    double m_target_pos = 0.0;
+    double m_prev_pos = 0.0;  // 過去位置、動作開始時の位置。
+    double m_curr_pos = m_prev_pos;  // 現在位置
   };
 } /* Probo */
 

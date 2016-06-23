@@ -18,9 +18,8 @@ Parent::~Parent()
   while (! m_children.empty())
     {
       Child * cp = m_children.front();
-      remove_child(cp); /* 無限ループ回避 */
-      EA1_SAFE_DELETE(cp); /* ここでも remove_child()呼ばれるけど、
-                            * 既に消してるものを消さないだけ。 */ 
+      //remove_child(cp); /* 戸籍抹消 */
+      EA1_SAFE_DELETE(cp); /* 子殺し。 */ 
     }
 }
 
@@ -38,17 +37,56 @@ int Parent::remove_child(Child * cp)
       LOGE("%s: %s is not my child", __func__, cp->get_name().c_str());
       return EA1_EINVAL;
     }
-  /* m_children から一致する要素を削除。 */
-  int s1 =  m_children.size();
-  m_children.remove(cp);
-  int s2 =  m_children.size();
-  LOGD("%s removed %d elements", __func__, s1 - s2);
+  /* m_children から一致する要素を全部削除。 */
+  int ser = 0;
+  auto itr = m_children.begin();
+  while (itr != m_children.end())
+    {
+      if (*itr == cp)
+        {
+          itr = m_children.erase(itr);
+            LOGD("%s removed [%d]", __func__, ser);
+        }
+      else
+        itr ++;
+      //LOGD("%s ser %d", __func__, ser);
+      ser ++;
+    }
   return EA1_OK;
+}
+
+Child::Child(Parent& parent, int sn, const std::string& name)
+  : m_name(name), m_sn(parent.get_children_amt()), m_parent_p(&parent)
+{
+  LOGD("Child(%s) #%d", name.c_str(), m_sn);
+}
+
+Child::~Child(){
+  LOGD("~Child %s #%d", m_name.c_str(), m_sn);
+    m_parent_p->remove_child(this);
+}
+
+/* sn 番目の子を返す。無ければNULL返す。 */
+Child * Parent::get_child(int sn)
+{
+  if (sn >= (int)m_children.size())
+    return NULL;
+  return m_children[sn];
+}
+
+bool Parent::has_child(Child * cp)
+{
+  for (auto itr = m_children.begin(); itr != m_children.end(); itr ++)
+    {
+      if (*itr == cp)
+        return true;
+    }
+  return false;
 }
 
 TestController * TestBody::create_controller(const std::string& name)
 {
-  TestController * cp = new TestController(*this, get_next_sn(), name);
+  TestController * cp = new TestController(*this, get_children_amt(), name);
   if (cp == NULL) return NULL;
   int rc = add(*cp);
   if (rc != EA1_OK)
@@ -64,10 +102,14 @@ int Pfamily::test_main(int argc, char *argv[])
 {
   TestBody * fbd1 = new TestBody("family_body1");
   TestBody * fbd2 = new TestBody("family_body2");
-  TestController * fct_a = fbd1->create_controller("fct_a");
-  TestController * fct_b = fbd1->create_controller("fct_baa");
+  TestController * fct_a = fbd1->create_controller("fct1_a");
+  TestController * fct_b = fbd1->create_controller("fct1_b");
+  TestController * fct_c = fbd2->create_controller("fct2_c");
+  TestController * fct_d = fbd2->create_controller("fct2_d");
+  TestController * fct_e = fbd1->create_controller("fct1_e");
   LOGI("Faily controller %s, parent %s",
        fct_a->get_name().c_str(), fct_a->get_parent().get_p_name().c_str());
+  EA1_SAFE_DELETE(fct_b);
   //delete fct_a;
   EA1_SAFE_DELETE(fbd1);
   EA1_SAFE_DELETE(fbd2);
