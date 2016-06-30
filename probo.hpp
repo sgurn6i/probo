@@ -56,6 +56,7 @@ namespace Probo
       Pfamily::Child::Child(controller,sn,name){ }
     virtual ~Joint(){}
     int target(double pos);   /* ターゲットposition設定。 */
+    double get_curr_pos() const { return m_curr_pos; }
     /* Controllerからの指令。 */
     virtual int go_target_at(double percent);
     virtual void update_pos();
@@ -65,6 +66,7 @@ namespace Probo
     double m_prev_pos = 0.0;  // 過去位置、動作開始時の位置。
     double m_curr_pos = m_prev_pos;  // 現在位置
   };
+  int test_main(int argc, char *argv[]);
 } /* Probo */
 
 #endif /* _PROBO_H_ */

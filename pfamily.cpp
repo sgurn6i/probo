@@ -104,9 +104,6 @@ int Pfamily::test_main(int argc, char *argv[])
   TestBody * fbd2 = new TestBody("family_body2");
   TestController * fct_a = fbd1->create_controller("fct1_a");
   TestController * fct_b = fbd1->create_controller("fct1_b");
-  TestController * fct_c = fbd2->create_controller("fct2_c");
-  TestController * fct_d = fbd2->create_controller("fct2_d");
-  TestController * fct_e = fbd1->create_controller("fct1_e");
   LOGI("Faily controller %s, parent %s",
        fct_a->get_name().c_str(), fct_a->get_parent().get_p_name().c_str());
   EA1_SAFE_DELETE(fct_b);

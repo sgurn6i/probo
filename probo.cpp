@@ -136,7 +136,7 @@ int Body::make_update_pos()
 
 int Controller::go_target_at(double percent)
 {
-  LOGD("%s %s: %f %%", get_name().c_str(), __func__, percent);
+  //LOGD("%s %s: %f %%", get_name().c_str(), __func__, percent);
   /*  Pass to joints.  */
   int amt = get_children_amt();
   for (int ix = 0; ix < amt; ix ++)
@@ -207,14 +207,15 @@ int Joint::target(double pos)
   return EA1_OK;
 }
 
-int main(int argc, char *argv[])
+int Probo::test_main(int argc, char *argv[])
 {
   /* test pfamily */
   //Pfamily::test_main(argc,argv);
   //LOGI("");
   LOGI("starts");
   Body * body1 = new Body();
-  Controller * ct1 = body1->create_controller("ct1");
+  const char * name1 = "ct1";
+  Controller * ct1 = body1->create_controller(name1);
   Controller * ct2 = body1->create_controller("ct2");
   Joint * j11 = ct1->create_joint("j11");
   Joint * j12 = ct1->create_joint("j12");

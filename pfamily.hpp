@@ -32,8 +32,8 @@ namespace Pfamily
     Parent& get_parent() const { return *m_parent_p; }
   protected:
   private:
+    const std::string m_name;
     int m_sn = -1;    /* 親から見た serial number  */
-    const std::string m_name = "";
     Parent * const m_parent_p;
   };
 
@@ -72,7 +72,7 @@ namespace Pfamily
   {
   public:
     TestController(TestBody& parent, int sn, const std::string& name = "TestController")
-      : Child(parent, sn, name), Parent(name)
+      : Parent(name), Child(parent, sn, name)
     { }
   protected:
   private:
