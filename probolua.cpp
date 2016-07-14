@@ -314,6 +314,7 @@ int Probolua::com_main(int argc, char *argv[])
   return rc;
 }
 
+/* test main */
 int main(int argc, char *argv[])
 {
   int rc = EA1_OK;
