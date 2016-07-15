@@ -8,14 +8,14 @@
 #include "lualib.h"
 #include "lauxlib.h"
 
-namespace Probolua
+namespace probo
 {
   /* lua state, C++API関数一式準備 */
   lua_State* prepare_lua_api();
   /* .luaファイル読み込んで実行。 */
   int call_luafile(lua_State* L, const char *filename);
   /* コマンド実行 main */
-  int com_main(int argc, char *argv[]);
+  int lua_main(int argc, char *argv[]);
 }
 
 

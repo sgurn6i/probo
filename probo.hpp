@@ -8,13 +8,13 @@
 #include <string>
 #include "pfamily.hpp"
 
-namespace Probo
+namespace probo
 {
   class Joint; /* 関節ジョイント */
   class Sensor; /* センサ予定 */
   class Controller; /* コントローラー。シリアル通信他 */
   /* 親玉本体 */
-  class Body : public Pfamily::Parent
+  class Body : public pfamily::Parent
   {
   public:
     Body(const std::string& name = "Body");
@@ -33,13 +33,13 @@ namespace Probo
   };
 
   class Controller :
-    public Pfamily::Parent, 
-    public Pfamily::Child 
+    public pfamily::Parent, 
+    public pfamily::Child 
   {
   public:
     Controller(Body& body, int sn, const std::string& name) :
-      Pfamily::Parent::Parent(name),
-      Pfamily::Child::Child(body,sn,name){ }
+      pfamily::Parent::Parent(name),
+      pfamily::Child::Child(body,sn,name){ }
     virtual ~Controller(){ }
     virtual int go_target_at(double percent); /* ターゲットのpercent % まで進め */
     virtual void update_pos(); /* previous position を現在位置にアップデートせよ。 */
@@ -49,11 +49,11 @@ namespace Probo
   };
 
   class Joint :
-    public Pfamily::Child
+    public pfamily::Child
   {
   public:
     Joint(Controller& controller, int sn, const std::string& name) :
-      Pfamily::Child::Child(controller,sn,name){ }
+      pfamily::Child::Child(controller,sn,name){ }
     virtual ~Joint(){}
     int target(double pos);   /* ターゲットposition設定。 */
     double get_curr_pos() const { return m_curr_pos; }
@@ -67,6 +67,6 @@ namespace Probo
     double m_curr_pos = m_prev_pos;  // 現在位置
   };
   int test_main(int argc, char *argv[]);
-} /* Probo */
+} /* namespace probo */
 
 #endif /* _PROBO_H_ */

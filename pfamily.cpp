@@ -3,10 +3,10 @@
    2016-06-17 16:22:46 Sgurn6i
 */
 #include "pfamily.hpp"
-using Pfamily::Child;
-using Pfamily::Parent;
-using Pfamily::TestBody;
-using Pfamily::TestController;
+using pfamily::Child;
+using pfamily::Parent;
+using pfamily::TestBody;
+using pfamily::TestController;
 #include "ea1/ea1_debug.h"
 #include "ea1/ea1_benri.h"
 #define LOG_TAG "pfamily"
@@ -98,7 +98,7 @@ TestController * TestBody::create_controller(const std::string& name)
   return cp;
 }
 
-int Pfamily::test_main(int argc, char *argv[])
+int pfamily::test_main(int argc, char *argv[])
 {
   TestBody * fbd1 = new TestBody("family_body1");
   TestBody * fbd2 = new TestBody("family_body2");

@@ -57,14 +57,14 @@ static int get_or_new_mt (lua_State* L, const char * mt_name,
 /* Parent関数 */
 static int parent_get_children_amt_lua(lua_State* L)
 {
-  Pfamily::Parent * obj = *(Pfamily::Parent **)lua_touserdata(L,1);
+  pfamily::Parent * obj = *(pfamily::Parent **)lua_touserdata(L,1);
   int amt = obj->get_children_amt();
   lua_pushnumber(L, amt);
   return 1;
 }
 static int parent_get_name_lua(lua_State* L)
 {
-  Pfamily::Parent * obj = *(Pfamily::Parent **)lua_touserdata(L,1);
+  pfamily::Parent * obj = *(pfamily::Parent **)lua_touserdata(L,1);
   const std::string name = obj->get_p_name();
   lua_pushstring(L, name.c_str());
   return 1;
@@ -72,7 +72,7 @@ static int parent_get_name_lua(lua_State* L)
 /* child関数 */
 static int child_get_name_lua(lua_State* L)
 {
-  Pfamily::Child * obj = *(Pfamily::Child **)lua_touserdata(L,1);
+  pfamily::Child * obj = *(pfamily::Child **)lua_touserdata(L,1);
   const std::string name = obj->get_name();
   lua_pushstring(L, name.c_str());
   return 1;
@@ -83,7 +83,7 @@ static int body_do_em_in_lua(lua_State* L)
   int nargs = lua_gettop(L);
   if (nargs != 2)
     return luaL_error( L, "%s: wrong nargs %d != 2", __func__, nargs);
-  Probo::Body* body = *(Probo::Body **)lua_touserdata(L,1);
+  probo::Body* body = *(probo::Body **)lua_touserdata(L,1);
   double time = lua_tonumber(L,2);
   int rc = body->do_em_in( time );
   if (rc != EA1_OK)
@@ -96,7 +96,7 @@ static int body_set_tick_lua(lua_State* L)
   int nargs = lua_gettop(L);
   if (nargs != 2)
     return luaL_error( L, "%s: wrong nargs %d != 2", __func__, nargs);
-  Probo::Body* body = *(Probo::Body **)lua_touserdata(L,1);
+  probo::Body* body = *(probo::Body **)lua_touserdata(L,1);
   double tick = lua_tonumber(L,2);
   int rc = body->set_tick( tick );
   if (rc != EA1_OK)
@@ -105,7 +105,7 @@ static int body_set_tick_lua(lua_State* L)
 }
 static int body_get_tick_lua(lua_State* L)
 {
-  Probo::Body* body = *(Probo::Body **)lua_touserdata(L,1);
+  probo::Body* body = *(probo::Body **)lua_touserdata(L,1);
   double tick = body->get_tick();
   lua_pushnumber( L, tick );
   return 1;
@@ -117,7 +117,7 @@ static int body_get_tick_lua(lua_State* L)
   int rc;
   if (nargs != 2)
     return luaL_error( L, "%s: wrong nargs %d != 2", __func__, nargs);
-  Probo::Joint* joint = *(Probo::Joint **)lua_touserdata(L,1);
+  probo::Joint* joint = *(probo::Joint **)lua_touserdata(L,1);
   double f_target = lua_tonumber(L,2);
   rc = joint->target(f_target);
   if (rc != EA1_OK)
@@ -126,7 +126,7 @@ static int body_get_tick_lua(lua_State* L)
 }
 static int joint_get_curr_pos_lua(lua_State* L)
 {
-  Probo::Joint* joint = *(Probo::Joint **)lua_touserdata(L,1);
+  probo::Joint* joint = *(probo::Joint **)lua_touserdata(L,1);
   double pos = joint->get_curr_pos();
   lua_pushnumber( L, pos );
   return 1;
@@ -146,16 +146,16 @@ static int controller_create_joint_lua(lua_State* L)
 {
   std::string name = "joint";
   int nargs = lua_gettop(L);
-  Probo::Controller * cp;
+  probo::Controller * cp;
   if ((nargs < 1) || (! lua_isuserdata(L,1)))
     return luaL_error( L, "%s: wrong arg. nargs %d", __func__, nargs);
-  cp = *(Probo::Controller **)lua_touserdata(L,1);
+  cp = *(probo::Controller **)lua_touserdata(L,1);
   if ((nargs >= 2) && lua_isstring(L, 2))
     { name = lua_tostring(L,2); }
   if(cp == NULL)
     return luaL_error( L, "%s: userdata Controller is NULL", __func__);
-  Probo::Joint ** jt_pp
-    = (Probo::Joint **)lua_newuserdata(L, sizeof(Probo::Joint *)); // stack: u /..
+  probo::Joint ** jt_pp
+    = (probo::Joint **)lua_newuserdata(L, sizeof(probo::Joint *)); // stack: u /..
   if (jt_pp == NULL)
     return luaL_error( L, "failed lua_newuserdata()") ;
   *jt_pp = cp->create_joint(name);
@@ -180,16 +180,16 @@ static int body_create_controller_lua(lua_State* L)
 {
   std::string name = "ctlr";
   int nargs = lua_gettop(L);
-  Probo::Body * bp;
+  probo::Body * bp;
   if ((nargs < 1) || (! lua_isuserdata(L,1)))
     return luaL_error( L, "%s: wrong arg. nargs %d", __func__, nargs);
-  bp = *(Probo::Body **)lua_touserdata(L,1);
+  bp = *(probo::Body **)lua_touserdata(L,1);
   if ((nargs >= 2) && lua_isstring(L, 2))
     { name = lua_tostring(L,2); }
   if(bp == NULL)
     return luaL_error( L, "%s: userdata Body is NULL", __func__);
-  Probo::Controller ** ct_pp
-    = (Probo::Controller **)lua_newuserdata(L, sizeof(Probo::Controller *)); // stack: u /..
+  probo::Controller ** ct_pp
+    = (probo::Controller **)lua_newuserdata(L, sizeof(probo::Controller *)); // stack: u /..
   if (ct_pp == NULL)
     return luaL_error( L, "failed lua_newuserdata()") ;
   *ct_pp = bp->create_controller(name);
@@ -204,7 +204,7 @@ static int body_create_controller_lua(lua_State* L)
 /* gc destructor */
 static int body_delete_lua(lua_State* L)
 {
-  Probo::Body* object = *(Probo::Body **)lua_touserdata(L,1);
+  probo::Body* object = *(probo::Body **)lua_touserdata(L,1);
   EA1_SAFE_DELETE(object);
   return 0;
 }
@@ -227,13 +227,13 @@ static int create_body_lua(lua_State* L)
   std::string name = "body";
   if ((lua_gettop(L) >= 1) && lua_isstring(L, -1))
     { name = lua_tostring(L,1); }
-  Probo::Body ** bpp
-    = (Probo::Body **)lua_newuserdata(L, sizeof(Probo::Body *)); // stack: u /..
+  probo::Body ** bpp
+    = (probo::Body **)lua_newuserdata(L, sizeof(probo::Body *)); // stack: u /..
   if (bpp == NULL)
     return luaL_error( L, "failed lua_newuserdata()" );
-  *bpp = new Probo::Body(name);
+  *bpp = new probo::Body(name);
   if (*bpp == NULL)
-    return luaL_error( L, "failed new Probo::Body()");
+    return luaL_error( L, "failed new probo::Body()");
   rc = get_or_new_mt(L, BODY_MT, body_funcs, body_delete_lua);  // stack: mt / u
   if (rc != EA1_OK)
     {
@@ -246,7 +246,7 @@ static int create_body_lua(lua_State* L)
 }
 
 /* lua state, C++API関数一式準備 */
-lua_State* Probolua::prepare_lua_api()
+lua_State* probo::prepare_lua_api()
 {
   int rc = EA1_OK;
   lua_State *L = luaL_newstate();
@@ -268,7 +268,7 @@ lua_State* Probolua::prepare_lua_api()
 }
 
 /* .luaファイル読み込んで実行。 */
-int Probolua::call_luafile(lua_State* L, const char *filename)
+int probo::call_luafile(lua_State* L, const char *filename)
 {
   int rc = EA1_OK;
   int lua_rc = luaL_loadfile(L, filename);
@@ -296,10 +296,10 @@ int Probolua::call_luafile(lua_State* L, const char *filename)
 }
 
 /* コマンド実行 main */
-int Probolua::com_main(int argc, char *argv[])
+int probo::lua_main(int argc, char *argv[])
 {
   int rc = EA1_OK;
-  lua_State *L = Probolua::prepare_lua_api();
+  lua_State *L = probo::prepare_lua_api();
   const char * luafile = "tseq1.lua";
   if (L == NULL)
     { rc = EA1_FAIL; goto RET; }
@@ -307,20 +307,10 @@ int Probolua::com_main(int argc, char *argv[])
     {
       luafile = argv[1];
     }
-  rc = Probolua::call_luafile( L, luafile );
+  rc = probo::call_luafile( L, luafile );
  RET:
   if(L)
     lua_close(L);
   return rc;
 }
 
-/* test main */
-int main(int argc, char *argv[])
-{
-  int rc = EA1_OK;
-  LOGI("test starts");
-  //rc = Probo::test_main(argc, argv);
-  rc = Probolua::com_main(argc, argv);
-  
-  return rc;
-}

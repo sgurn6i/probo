@@ -65,3 +65,4 @@ Makefile.in
 ## 2016-07-14 17:47:42 config関係
 /config.*
 .deps/
+Makefile

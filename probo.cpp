@@ -13,16 +13,16 @@
 #include "pfamily.hpp"
 #include "probo.hpp"
 #define LOG_TAG "probo"
-using Probo::Body;
-using Probo::Controller;
-using Probo::Joint;
+using probo::Body;
+using probo::Controller;
+using probo::Joint;
 
 /* a と b が delta > 0 的に近い。 */
 #define NEAR_POS(a,b,delta) \
   ((((a) - (b)) < (delta)) && (((b) - (a)) < (delta)))
 
 Body::Body(const std::string& name) :
-  Pfamily::Parent::Parent(name)
+  pfamily::Parent::Parent(name)
 {
   reset_time();
 }
@@ -207,10 +207,10 @@ int Joint::target(double pos)
   return EA1_OK;
 }
 
-int Probo::test_main(int argc, char *argv[])
+int probo::test_main(int argc, char *argv[])
 {
   /* test pfamily */
-  //Pfamily::test_main(argc,argv);
+  //pfamily::test_main(argc,argv);
   //LOGI("");
   LOGI("starts");
   Body * body1 = new Body();

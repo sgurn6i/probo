@@ -9,7 +9,7 @@
 #include <vector>
 #include "ea1/ea1_debug.h"
 #define LOG_TAG "pfamily"
-namespace Pfamily
+namespace pfamily
 {
   /* 親子関係。
    * Child は Parent が作る。
@@ -79,6 +79,6 @@ namespace Pfamily
   };
   /* test function */
   int test_main(int argc, char *argv[]);
-} /* namespace Pfamily */
+} /* namespace pfamily */
 #undef LOG_TAG
 #endif /* _PFAMILY_H_ */
