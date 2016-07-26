@@ -33,10 +33,19 @@
 #define PCA9685_LED_MAX_CT  4095    /* LED on/off カウント値としてのレジスタMAX値。 */
 #define PCA9685_LED_FULL    4096    /* LED full ON/OFF レジスタ設定値。 */
 #define PCA9685_OSC_FREQ    27296727.04 /* オシロ周波数実測値 */
-#define PCA9685_DEFAULT_PWM_FREQ 60.0
+
+#define SAFE_CLOSE_FILE( fd )                   \
+  do {                                          \
+    if ( (fd) >= 0 )                            \
+      {                                         \
+        close( fd );                            \
+        (fd) = -1;                              \
+      }                                         \
+  } while(0)
 
 /* ructors */
 probo::Pca9685::Pca9685() :
+  m_initialized( false ),
   m_device( "" ),
   m_i2c_addr( -1 ),
   m_fd( -1 ),
@@ -51,8 +60,7 @@ probo::Pca9685::Pca9685() :
 
 probo::Pca9685::~Pca9685()
 {
-  if (m_fd >= 0)
-    close( m_fd );
+  SAFE_CLOSE_FILE( m_fd );
 }
 
 void probo::Pca9685::write8( uint8_t addr, uint8_t data )
@@ -133,11 +141,12 @@ uint16_t probo::Pca9685::read16( uint8_t addr )
   return rd;
 }
 
-int probo::Pca9685::init( const std::string& device, int i2c_addr )
+int probo::Pca9685::init( const std::string& device, int i2c_addr, double pwm_freq )
 {
   int rc = EA1_OK;
   try
     {
+      SAFE_CLOSE_FILE( m_fd ); /* 開いてたら閉じる */
       m_device = device;
       m_i2c_addr = i2c_addr;
       m_fd = open( m_device.c_str(), O_RDWR );
@@ -151,10 +160,16 @@ int probo::Pca9685::init( const std::string& device, int i2c_addr )
       mode1 &= ~PCA9685_SLEEP;
       write8( PCA9685_MODE1, mode1 );   /* wakeup */
       usleep( PCA9685_OSC_WAIT_US );
-      rc = set_pwm_freq( PCA9685_DEFAULT_PWM_FREQ );
+      rc = set_pwm_freq( pwm_freq );
+      if (rc == EA1_OK)
+        m_initialized = true;
     }
   catch( ea1_status_t rc_error )
     { rc = rc_error; }
+  if ( rc != EA1_OK )
+    {
+      SAFE_CLOSE_FILE( m_fd );
+    }
   return rc;
 }
 
@@ -195,14 +210,14 @@ int probo::Pca9685::set_pwm_freq( double freq )
 }
 
 double probo::Pca9685::get_pwm_width( int ch )
- {
+{
    if(( ch < 0 ) || ( ch >= m_ch_amt ))
      {
         LOGE( "%s: ch %d outof range", __func__, ch );
        return 0.0; /* これでいいの？ */
      }
    return m_pwm_widths[ ch ];
- }
+}
 
 int probo::Pca9685::set_pwm_width( int ch, double t_ms )
 {

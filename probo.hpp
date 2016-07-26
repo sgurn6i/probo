@@ -10,9 +10,11 @@
 
 namespace probo
 {
+  /* 前方宣言 */
   class Joint; /* 関節ジョイント */
   class Sensor; /* センサ予定 */
   class Controller; /* コントローラー。シリアル通信他 */
+  class Pwmc; /* probopwm.hpp */
   /* 親玉本体 */
   class Body : public pfamily::Parent
   {
@@ -37,35 +39,49 @@ namespace probo
     public pfamily::Child 
   {
   public:
-    Controller(Body& body, int sn, const std::string& name) :
-      pfamily::Parent::Parent(name),
-      pfamily::Child::Child(body,sn,name){ }
+    Controller( Body& body, int sn, const std::string& name );
     virtual ~Controller(){ }
-    virtual int go_target_at(double percent); /* ターゲットのpercent % まで進め */
+    virtual int go_target_at( double percent ); /* ターゲットのpercent % まで進め */
     virtual void update_pos(); /* previous position を現在位置にアップデートせよ。 */
     Body& get_body() const { return (Body&)get_parent(); }
-    virtual Joint * create_joint(const std::string& name = "j");
+    virtual Joint * create_joint( const std::string& name = "j" );
+    /* pwm */
+    int attach_pwmc( Pwmc& pwmc ); /* init済のpwmcをattachする。 */
+    void detach_pwmc(){ m_pwmc = NULL; }
+    Pwmc * get_pwmc() const { return m_pwmc; }
   private:
+    int control_joint_hw ( Joint& joint );  /* jointに付随するハードウェアを動かす。 */
+    int control_joint_pwm_hw ( Joint& joint );  /* jointに付随するPWMハードウェアを動かす。 */
+    Pwmc * m_pwmc;
   };
 
+  class Pwmservo; /* probopwm.hpp */
   class Joint :
     public pfamily::Child
   {
   public:
     Joint(Controller& controller, int sn, const std::string& name) :
-      pfamily::Child::Child(controller,sn,name){ }
+      pfamily::Child::Child(controller,sn,name)
+    { }
     virtual ~Joint(){}
     int target(double pos);   /* ターゲットposition設定。 */
     double get_curr_pos() const { return m_curr_pos; }
     /* Controllerからの指令。 */
     virtual int go_target_at(double percent);
     virtual void update_pos();
+    /* PWM servo関係 */
+    int attach_pwmservo( Pwmservo& pwmservo ); /* init済のpwmservoをattachする。
+                                                  先にControllerにPwmcが付いているを期待する。 */
+    void detach_pwmservo() { m_pwmservo = NULL; }
+    Pwmservo * get_pwmservo() const { return m_pwmservo; }
   private:
-    int m_servo_n;   // サーボ番号
     double m_target_pos = 0.0;
-    double m_prev_pos = 0.0;  // 過去位置、動作開始時の位置。
-    double m_curr_pos = m_prev_pos;  // 現在位置
+    double m_prev_pos = -1000.0;  // 過去位置、動作開始時の位置。
+    double m_curr_pos = 0.0;  // 現在位置
+    Pwmservo * m_pwmservo = NULL;
   };
+
+  /* テスト用関数 */
   int test_main(int argc, char *argv[]);
 } /* namespace probo */
 

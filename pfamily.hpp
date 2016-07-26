@@ -1,5 +1,5 @@
 /* pfamily.hpp    -*- C++ -*-
-   parent, children階層
+   base, parent, children階層
    2016-06-16 16:56:16 Sgurn6i
 */
 #ifndef _PFAMILY_H_
@@ -11,6 +11,14 @@
 #define LOG_TAG "pfamily"
 namespace pfamily
 {
+  /* 共通 base。
+   * dynanmic_cast される所の class として使う。 */
+  class Base
+  {
+  public:
+    virtual ~Base(){ }
+  };
+  
   /* 親子関係。
    * Child は Parent が作る。
    * Child は作成時は1つのParentを持つ。
@@ -22,7 +30,7 @@ namespace pfamily
   class Parent;
   class Child;
 
-  class Child
+  class Child : public Base
   {
   public:
     Child(Parent& parent, int sn, const std::string& name);
@@ -37,11 +45,11 @@ namespace pfamily
     Parent * const m_parent_p;
   };
 
-  class Parent
+  class Parent : public Base
   {
     friend Child::~Child();
   public:
-    Parent(const std::string& name = "p")
+    Parent(const std::string& name = "parent")
       : m_p_name(name)
     {LOGD("Parent(%s)", name.c_str()); }
     virtual ~Parent();

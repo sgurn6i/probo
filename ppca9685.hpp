@@ -14,33 +14,35 @@ namespace probo
   {
   public:
     /* Pwmc class */
-    virtual int init( const std::string& device = "/dev/i2c-2", int i2c_addr = 0x40 );
     virtual int get_ch_amt() const { return m_ch_amt; }
     virtual int set_pwm_freq( double freq );
     virtual int set_pwm_width( int ch, double t_ms );
     virtual double get_pwm_width( int ch );
+    virtual bool is_initialized() const { return m_initialized; }
     /* ructors */
     Pca9685();
     virtual ~Pca9685();
     /*  */
-    virtual const std::string& get_device() const { return m_device; }
-    virtual int get_i2c_addr() const { return m_i2c_addr; }
-    virtual int cal_osc_freq( double osc_freq );    /* 公称25MHz内部オシレータ周波数設定。calibration用。 */
-    virtual uint8_t read_reg( uint8_t addr ); /* for debug */
+    int init( const std::string& device = "/dev/i2c-2", int i2c_addr = 0x40, double pwm_freq = 60.0 );
+    const std::string& get_device() const { return m_device; }
+    int get_i2c_addr() const { return m_i2c_addr; }
+    int cal_osc_freq( double osc_freq );    /* 公称25MHz内部オシレータ周波数設定。calibration用。 */
+    uint8_t read_reg( uint8_t addr ); /* for debug */
   protected:
-    virtual void write8( uint8_t addr, uint8_t data );
-    virtual void write16( uint8_t addr, uint16_t data );
-    virtual uint8_t read8( uint8_t addr );
-    virtual uint16_t read16( uint8_t addr );
-    virtual void set_pwm_reg( int ch, uint16_t on, uint16_t off ); 
-    virtual void set_all_pwm_reg( uint16_t on, uint16_t off ); 
+    void write8( uint8_t addr, uint8_t data );
+    void write16( uint8_t addr, uint16_t data );
+    uint8_t read8( uint8_t addr );
+    uint16_t read16( uint8_t addr );
+    void set_pwm_reg( int ch, uint16_t on, uint16_t off ); 
+    void set_all_pwm_reg( uint16_t on, uint16_t off ); 
   private:
+    bool m_initialized;
     static const int m_ch_amt = 16;
     double m_pwm_widths[m_ch_amt];
     std::string m_device;
     int m_i2c_addr;
     int m_fd; /* i2c file descriptor */
-    double m_pwm_freq;  /* PWM周波数。 */
+    double m_pwm_freq;  /* PWM実周波数。 */
     int m_prescale; /* m_pwm_freq から計算したprescale値。 */
     double m_osc_freq;  /* 25MHz内部osc周波数。 */
   };

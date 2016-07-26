@@ -11,6 +11,8 @@
 #include "ea1/ea1_benri.h"
 #include "ea1/ea1_time.h"
 #include "pfamily.hpp"
+#include "probopwm.hpp"
+#include "ppca9685.hpp"
 #include "probo.hpp"
 #define LOG_TAG "probo"
 using probo::Body;
@@ -134,22 +136,62 @@ int Body::make_update_pos()
   return EA1_OK;
 }
 
+Controller::Controller(Body& body, int sn, const std::string& name) :
+  pfamily::Parent::Parent( name ),
+  pfamily::Child::Child( body, sn, name ),
+  m_pwmc( NULL )
+{ }
+
+
 int Controller::go_target_at(double percent)
 {
   //LOGD("%s %s: %f %%", get_name().c_str(), __func__, percent);
+  int rc = EA1_OK;
   /*  Pass to joints.  */
-  int amt = get_children_amt();
+    int amt = get_children_amt();
   for (int ix = 0; ix < amt; ix ++)
     {
-      Joint * joint = dynamic_cast<Joint *>(get_child(ix));
+      Joint * joint = dynamic_cast<Joint *>( get_child( ix ));
       if (joint != NULL)
         {
-          joint->go_target_at(percent);
+          joint->go_target_at( percent );
+          int joint_rc = control_joint_hw( *joint );
+          if ((rc >= 0) && (joint_rc < 0))
+            rc = joint_rc;
         }
     }
-  return EA1_OK;
+  return rc;
 }
 
+int Controller::control_joint_hw( Joint& joint )
+{
+  int rc = EA1_OK;
+  if (m_pwmc != NULL)
+    {
+      rc = control_joint_pwm_hw( joint );
+      if (rc < 0)
+        return rc;
+    }
+  return rc;
+}
+
+int Controller::control_joint_pwm_hw( Joint& joint )
+{
+  int rc = EA1_OK;
+  Pwmservo * pwmservo = joint.get_pwmservo();
+  if (pwmservo != NULL)
+    {
+      rc = m_pwmc->set_pwm_width( pwmservo->get_ch(), pwmservo->get_curr_pw() );
+      if (rc < 0)
+        {
+          LOGE("%s %s: joint %s failed", get_name().c_str(), __func__, joint.get_name().c_str());
+          return rc;
+        }
+    }
+  return rc;
+}
+
+  
 void Controller::update_pos()
 {
   /*  Pass to joints.  */
@@ -178,6 +220,18 @@ Joint * Controller::create_joint(const std::string& name)
   return jp;
 }
 
+int Controller::attach_pwmc( probo::Pwmc& pwmc )
+{
+  int rc = EA1_OK;
+  if (! pwmc.is_initialized())
+    {
+      LOGE("%s: pwmc is not initialized", __func__);
+      return EA1_E_NOT_READY;
+    }
+  m_pwmc = &pwmc;
+  return rc;
+}
+
 int Joint::go_target_at(double percent)
 {
   double ratio = percent * 0.01;
@@ -185,10 +239,14 @@ int Joint::go_target_at(double percent)
   if (ratio > 1.0) ratio = 1.0;
   /* curr_pos to be updated. */
   double new_curr_pos = m_prev_pos + (m_target_pos - m_prev_pos) * ratio;
-  /* 近いのは変えない。 */
+  /* 近いのは変えない。 Todo: 途中でservo起動したりすると面倒なことになりそう.. */
   if(! NEAR_POS(m_curr_pos, new_curr_pos, 1.0e-5))
     {
       m_curr_pos = new_curr_pos;
+      if (m_pwmservo != NULL)
+        {
+          m_pwmservo->set_curr_deg( m_curr_pos );
+        }
     }
   LOGD("%s %s: %f %% pos %f", get_name().c_str(), __func__, percent, m_curr_pos);
   return EA1_OK;
@@ -197,7 +255,11 @@ int Joint::go_target_at(double percent)
 void Joint::update_pos()
 {
   m_prev_pos = m_curr_pos;
-}
+  if (m_pwmservo != NULL)
+    {
+      m_pwmservo->set_curr_deg( m_curr_pos );
+    }
+ }
 
 int Joint::target(double pos)
 {
@@ -205,6 +267,33 @@ int Joint::target(double pos)
   /* todo: check ターゲット範囲。 */
   LOGD("%s: pos curr %f, target %f", get_name().c_str(), m_curr_pos, m_target_pos);  
   return EA1_OK;
+}
+
+int Joint::attach_pwmservo( probo::Pwmservo& pwmservo )
+{
+  int rc = EA1_OK;
+  if (! pwmservo.is_initialized())
+    {
+      LOGE("%s %s: pwmservo is not initialized", get_name().c_str(), __func__);
+      return EA1_E_NOT_READY;
+    }
+  Controller * controller = dynamic_cast<Controller *>( &get_parent() );
+  probo::Pwmc * pwmc = NULL;
+  if (controller != NULL)
+    pwmc = controller->get_pwmc();
+  if (pwmc == NULL)
+    {
+      LOGE("%s %s: no pwmc was attached", get_name().c_str(), __func__);
+      return EA1_E_NOT_READY;
+    }
+  /* jointの親のcontrollerに付いてるpwmcのチャンネル範囲を超えたらエラー。 */
+  if ((pwmservo.get_ch() < 0) || (pwmservo.get_ch() >= pwmc->get_ch_amt()))
+    {
+      LOGE("%s %s: pwmservo ch %d out of range 0 .. %d",
+           get_name().c_str(), __func__, pwmservo.get_ch(), pwmc->get_ch_amt() - 1);
+    }
+  m_pwmservo = &pwmservo;
+  return rc;
 }
 
 int probo::test_main(int argc, char *argv[])
@@ -219,19 +308,31 @@ int probo::test_main(int argc, char *argv[])
   Controller * ct2 = body1->create_controller("ct2");
   Joint * j11 = ct1->create_joint("j11");
   Joint * j12 = ct1->create_joint("j12");
-  Joint * j21 = ct2->create_joint("j21");
-  body1->set_tick(50.0);
+  Joint * j21 = ct2->create_joint("j21_has_a_long_name_like_this");
+  /* pwm */
+  probo::Pca9685 * pca9685 = new probo::Pca9685();
+  pca9685->init( "/dev/i2c-2", 0x40, 100.0 );
+  ct1->attach_pwmc( *pca9685 );
+  probo::Pwmservo * sv1 = new probo::Pwmservo( 0, PWM_SV_RS304MD );
+  probo::Pwmservo * sv2 = new probo::Pwmservo( 1, PWM_SV_RS304MD );
+  j11->attach_pwmservo( *sv1 );
+  j12->attach_pwmservo( *sv2 );
+  /* sequence */
+  body1->set_tick(20.0);
   j11->target(90.0);
-  j12->target(-45.0);
+  j12->target(-90.0);
   j21->target(45.0);
-  body1->do_em_in(500.0);
-  j11->target(0.0);
+  body1->do_em_in(300.0);
+  j12->target(180.0);
   j21->target(-90.0);
-  body1->do_em_in(200.0);
-  EA1_SAFE_DELETE(j11);
-  j12->target(45.0);
+  body1->do_em_in(2200.0);
+  j11->target(0.0);
+  j12->target(0.0);
   body1->do_em_in(200.0);
   /* destruct */
   EA1_SAFE_DELETE(body1);
+  EA1_SAFE_DELETE( sv1 );
+  EA1_SAFE_DELETE( sv2 );
+  EA1_SAFE_DELETE( pca9685 );
   return 0;
 }
