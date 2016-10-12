@@ -66,3 +66,13 @@ Makefile.in
 /config.*
 .deps/
 Makefile
+
+## 2016-10-11 16:28:57 cmake
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+#Makefile
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+build/

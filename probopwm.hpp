@@ -31,6 +31,7 @@ namespace probo
     PWM_SV_UNKNOWN,       /* 不明。 */
     PWM_SV_CUSTOM,       /* パラメータ手動設定。 */
     PWM_SV_RS304MD,      /* Futaba RS304MD */
+    PWM_SV_MG996R,      /* Towerpro MG996R */
     PWM_SV_DEFAULT     /* デフォルト。 */
   } pwmservo_type_t;
 

@@ -14,6 +14,7 @@ const std::map<probo::pwmservo_type_t, probo::pwmservo_params_t> probo::g_pwmser
 = {
   /* {type, {pw_0deg, pw_90deg,  }} */
   {probo::PWM_SV_RS304MD, { 1.520, 0.920, -144.0, 144.0 }}, 
+  {probo::PWM_SV_MG996R, { 1.5, 0.5, -90.0, 90.0 }}, 
   {probo::PWM_SV_DEFAULT, { 1.500, 1.000, -90.0, 90.0 }}, 
 };
 

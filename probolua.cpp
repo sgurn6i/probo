@@ -38,11 +38,13 @@
 #define PWMSERVO_TYPE_DEFAULT  "default"
 #define PWMSERVO_TYPE_CUSTOM   "custom"
 #define PWMSERVO_TYPE_RS304MD  "rs304md"
+#define PWMSERVO_TYPE_MG996R  "mg996r"
 static const std::map<std::string, probo::pwmservo_type_t> s_pwmservo_types_map
 = {
   /* string for lua, pwmservo_type_t */
   {PWMSERVO_TYPE_DEFAULT, probo::PWM_SV_DEFAULT},
   {PWMSERVO_TYPE_RS304MD, probo::PWM_SV_RS304MD},
+  {PWMSERVO_TYPE_MG996R, probo::PWM_SV_MG996R},
 };
 
 /* Lua userdataからBaseポインタを取り出して所定クラスポインタにdynamic_castする。 */
