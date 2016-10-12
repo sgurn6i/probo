@@ -98,7 +98,8 @@ int Body::do_em_in(double time)
       LOGD("%s: t %f, dt %f, sleep %f, %f %%",
            __func__, time_lap, time_lap - m_time_prev,
            time_sleep, lap_percent);
-      ea1_sleep_ms(time_sleep); 
+      if (time_sleep > 0)   // 2016-10-12 15:30:36 added
+        ea1_sleep_ms(time_sleep); 
     }
   while (time_lap < time_target);
  RET:
