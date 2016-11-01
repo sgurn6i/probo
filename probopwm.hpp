@@ -51,7 +51,7 @@ namespace probo
   {
   public:
     Pwmservo( int ch = -1, pwmservo_type_t type = PWM_SV_UNKNOWN );
-    virtual ~Pwmservo(){ }
+    virtual ~Pwmservo();
     virtual int init( int ch, /* コントローラ内チャンネル。 */
                       pwmservo_type_t type );  /* Servoタイプ指定。 */
     virtual int init( int ch, const pwmservo_params_t& params ); /* カスタム設定。 */

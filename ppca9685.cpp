@@ -60,6 +60,7 @@ probo::Pca9685::Pca9685() :
 
 probo::Pca9685::~Pca9685()
 {
+  LOGD("~Pca9685(%s)", get_device().c_str());
   SAFE_CLOSE_FILE( m_fd );
 }
 

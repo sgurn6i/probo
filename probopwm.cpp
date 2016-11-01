@@ -31,6 +31,11 @@ Pwmservo::Pwmservo( int ch, pwmservo_type_t type ) :
     }
 }
 
+Pwmservo::~Pwmservo()
+{
+  LOGD("~Pwmservo(%d)", get_ch());
+}
+
 /* Pwmservo funcs */
 int Pwmservo::init( int ch, const pwmservo_params_t& params )
 {
