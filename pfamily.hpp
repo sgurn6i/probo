@@ -20,7 +20,7 @@ namespace pfamily
   };
   
   /* 親子関係。
-   * Child は Parent が作る。
+   * Child は Parent が create_child() で作る。適宜オーバーライドして使う。
    * Child は作成時は1つのParentを持つ。
    * Parentから引き離されて孤児になる事がある。destructの都合上。
    * 再び親を持つことは無い。
@@ -53,6 +53,7 @@ namespace pfamily
       : m_p_name(name)
     {LOGD("Parent(%s)", name.c_str()); }
     virtual ~Parent();
+    virtual Child * create_child( const std::string& name = "p child" );
     const std::string& get_p_name() const { return m_p_name; }
     int get_children_amt(){ return (int)m_children.size(); } 
     Child * get_child(int sn);/* sn 番目の子を返す。無ければNULL返す。 */
@@ -74,6 +75,7 @@ namespace pfamily
       : Parent(name){}
     virtual ~TestBody(){ }
     virtual TestController * create_controller(const std::string& name = "ct");
+    virtual Child * create_child(const std::string& name  = "cct");
   };
   
   class TestController : public Parent, public Child

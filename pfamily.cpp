@@ -23,9 +23,32 @@ Parent::~Parent()
     }
 }
 
+Child * Parent::create_child( const std::string& name )
+{
+  Child * cp = new Child(*this, get_children_amt(), name);
+  if (cp == NULL) return NULL;
+  int rc = add(*cp);
+  if (rc != EA1_OK)
+    {
+      LOGE("%s: failed to add( %s )", __func__, name.c_str());
+      remove_child(cp);
+      return NULL;
+    }
+  return cp;
+}
+
 int Parent::add(Child& c)
 {
-  m_children.push_back(&c);
+  if (&c.get_parent() != this)
+    {
+      LOGE("%s: %s not assumes me as the parent", __func__, c.get_name().c_str());
+      return EA1_EINVAL;
+    }
+  if (! has_child(&c))
+    {
+      m_children.push_back(&c);
+    }
+
   return EA1_OK;
 }
 
@@ -96,6 +119,11 @@ TestController * TestBody::create_controller(const std::string& name)
       return NULL;
     }
   return cp;
+}
+
+Child * TestBody::create_child( const std::string& name )
+{
+  return create_controller(name);
 }
 
 int pfamily::test_main(int argc, char *argv[])

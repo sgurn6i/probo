@@ -55,9 +55,7 @@ for ix = 0, leg_amt - 1 do
    jt[chs_per_leg * ix + 2]:target(45)
    b1:do_em_in(200)
 end
-while 1 do
-   b1:do_em_in(500)
-end
+b1:do_em_in(5000)
 
 -- end
 
