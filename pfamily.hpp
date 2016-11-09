@@ -32,13 +32,14 @@ namespace pfamily
 
   class Child : public Base
   {
+    friend class Parent;
   public:
-    Child(Parent& parent, int sn, const std::string& name);
-    virtual ~Child();
     int get_sn() const { return m_sn; }
     const std::string& get_name() const { return m_name; }
     Parent& get_parent() const { return *m_parent_p; }
   protected:
+    Child(Parent& parent, int sn, const std::string& name);
+    virtual ~Child();
   private:
     const std::string m_name;
     int m_sn = -1;    /* 親から見た serial number  */
@@ -49,9 +50,7 @@ namespace pfamily
   {
     friend Child::~Child();
   public:
-    Parent(const std::string& name = "parent")
-      : m_p_name(name)
-    {LOGD("Parent(%s)", name.c_str()); }
+    Parent(const std::string& name = "parent");
     virtual ~Parent();
     virtual Child * create_child( const std::string& name = "p child" );
     const std::string& get_p_name() const { return m_p_name; }
@@ -75,7 +74,7 @@ namespace pfamily
       : Parent(name){}
     virtual ~TestBody(){ }
     virtual TestController * create_controller(const std::string& name = "ct");
-    virtual Child * create_child(const std::string& name  = "cct");
+    virtual Child * create_child( const std::string& name  = "cct" );
   };
   
   class TestController : public Parent, public Child

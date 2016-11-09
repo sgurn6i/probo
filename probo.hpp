@@ -4,8 +4,8 @@
 */
 #ifndef _PROBO_H_
 #define _PROBO_H_
-#include <vector>
 #include <string>
+#include <vector>
 #include "pfamily.hpp"
 
 namespace probo
@@ -38,8 +38,8 @@ namespace probo
     public pfamily::Parent, 
     public pfamily::Child 
   {
+    friend Controller * Body::create_controller(const std::string& name);
   public:
-    Controller( Body& body, int sn, const std::string& name );
     virtual ~Controller(){ }
     virtual int go_target_at( double percent ); /* ターゲットのpercent % まで進め */
     virtual void update_pos(); /* previous position を現在位置にアップデートせよ。 */
@@ -49,6 +49,8 @@ namespace probo
     int attach_pwmc( Pwmc& pwmc ); /* init済のpwmcをattachする。 */
     void detach_pwmc(){ m_pwmc = NULL; }
     Pwmc * get_pwmc() const { return m_pwmc; }
+  protected:
+    Controller( Body& body, int sn, const std::string& name );
   private:
     int control_joint_hw ( Joint& joint );  /* jointに付随するハードウェアを動かす。 */
     int control_joint_pwm_hw ( Joint& joint );  /* jointに付随するPWMハードウェアを動かす。 */
@@ -59,10 +61,8 @@ namespace probo
   class Joint :
     public pfamily::Child
   {
+    friend Joint * Controller::create_joint( const std::string& name);
   public:
-    Joint(Controller& controller, int sn, const std::string& name) :
-      pfamily::Child::Child(controller,sn,name)
-    { }
     virtual ~Joint(){}
     int target(double pos);   /* ターゲットposition設定。 */
     double get_curr_pos() const { return m_curr_pos; }
@@ -74,6 +74,10 @@ namespace probo
                                                   先にControllerにPwmcが付いているを期待する。 */
     void detach_pwmservo() { m_pwmservo = NULL; }
     Pwmservo * get_pwmservo() const { return m_pwmservo; }
+  protected:
+    Joint(Controller& controller, int sn, const std::string& name) :
+      pfamily::Child::Child(controller,sn,name)
+    { }
   private:
     double m_target_pos = 0.0;
     double m_prev_pos = -1000.0;  // 過去位置、動作開始時の位置。

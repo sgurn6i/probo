@@ -1,12 +1,37 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
-SET(CMAKE_CXX_FLAGS_RELEASE "-Wall -O2 -fPIC -std=c++11")
-SET(CMAKE_CXX_FLAGS_DEBUG "-Wall -g -DEA1_DEBUG -fPIC -std=c++11")
-INCLUDE_DIRECTORIES("/usr/include/lua5.2")
-IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE "Release")
-ENDIF(NOT CMAKE_BUILD_TYPE)
-ADD_SUBDIRECTORY(ea1)
-PROJECT(probo)
-MESSAGE("${PROJECT_NAME} CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-ADD_EXECUTABLE(probo pfamily.cpp probo.cpp probolua.cpp probopwm.cpp ppca9685.cpp main.cpp)
-TARGET_LINK_LIBRARIES(probo ea1 lua5.2)
+cmake_minimum_required(VERSION 2.8)
+find_package(SWIG REQUIRED)
+include(${SWIG_USE_FILE})
+find_package(PythonLibs)
+include_directories(${PYTHON_INCLUDE_PATH})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${PROJECT_BINARY_DIR})
+set(CMAKE_CXX_FLAGS_RELEASE "-Wall -O2 -fPIC -std=c++11")
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -g -DEA1_DEBUG -fPIC -std=c++11")
+include_directories("/usr/include/lua5.2")
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif(NOT CMAKE_BUILD_TYPE)
+add_subdirectory(ea1)
+set(PROJECT_NAME probo)
+set(PROBO_SRCS pfamily.cpp probo.cpp probopwm.cpp ppca9685.cpp)
+set(LUA_IF_SRCS probolua.cpp main_lua.cpp)
+set(PYTHON_IF_SRCS probopy.i)
+set_source_files_properties(
+  ${PYTHON_IF_SRCS} PROPERTIES
+  CPLUSPLUS ON
+  )
+message("${PROJECT_NAME} CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+# probo core lib
+add_library(probo STATIC ${PROBO_SRCS})
+# LUA
+add_executable(probolua ${LUA_IF_SRCS})
+target_link_libraries(probolua probo ea1 lua5.2)
+# PYTHON
+swig_add_module(probopy python ${PYTHON_IF_SRCS})
+swig_link_libraries(probopy probo ea1)
+add_custom_target(probopy echo probopy for python)
+add_dependencies(probopy ${SWIG_MODULE_probopy_REAL_NAME})
+add_custom_command(
+  TARGET probopy POST_BUILD
+  COMMAND touch __init__.py
+  )

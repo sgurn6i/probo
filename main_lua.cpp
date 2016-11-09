@@ -1,5 +1,5 @@
-/* main.cpp    -*- C++ -*-
-   main関数
+/* main_lua.cpp    -*- C++ -*-
+   lua 用 main関数
    2016-07-15 16:32:34 Sgurn6i
 */
 #include "ea1/ea1_debug.h"

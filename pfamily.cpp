@@ -11,6 +11,12 @@ using pfamily::TestController;
 #include "ea1/ea1_benri.h"
 #define LOG_TAG "pfamily"
 
+Parent::Parent(const std::string& name)
+  : m_p_name(name)
+{
+  LOGD("Parent(%s)", name.c_str());
+}
+
 Parent::~Parent()
 {
   LOGD("~Parent(%s)", get_p_name().c_str());
