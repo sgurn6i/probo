@@ -16,10 +16,9 @@ set(PROJECT_NAME probo)
 set(PROBO_SRCS pfamily.cpp probo.cpp probopwm.cpp ppca9685.cpp)
 set(LUA_IF_SRCS probolua.cpp main_lua.cpp)
 set(PYTHON_IF_SRCS probopy.i)
-set_source_files_properties(
-  ${PYTHON_IF_SRCS} PROPERTIES
-  CPLUSPLUS ON
-  )
+set_source_files_properties(${PYTHON_IF_SRCS} PROPERTIES  CPLUSPLUS ON)
+set_source_files_properties(${PYTHON_IF_SRCS} PROPERTIES  SWIG_FLAGS "-includeall")
+set_source_files_properties(${PYTHON_IF_SRCS} PROPERTIES  SWIG_FLAGS "-Wall")
 message("${PROJECT_NAME} CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 # probo core lib
 add_library(probo STATIC ${PROBO_SRCS})
