@@ -17,6 +17,11 @@ namespace pfamily
   {
   public:
     virtual ~Base(){ }
+    virtual const std::string& get_name() const { return m_name; }
+  protected:
+    virtual void set_name(const std::string& name){ m_name = name; }
+  private:
+    std::string m_name = "";
   };
   
   /* 親子関係。
@@ -30,30 +35,28 @@ namespace pfamily
   class Parent;
   class Child;
 
-  class Child : public Base
+  class Child : virtual public Base
   {
     friend class Parent;
   public:
     int get_sn() const { return m_sn; }
-    const std::string& get_name() const { return m_name; }
     Parent& get_parent() const { return *m_parent_p; }
   protected:
     Child(Parent& parent, int sn, const std::string& name);
     virtual ~Child();
   private:
-    const std::string m_name;
     int m_sn = -1;    /* 親から見た serial number  */
     Parent * const m_parent_p;
   };
 
-  class Parent : public Base
+  class Parent : virtual public Base
   {
     friend Child::~Child();
   public:
-    Parent(const std::string& name = "parent");
+    Parent();
+    Parent(const std::string& name);
     virtual ~Parent();
     virtual Child * create_child( const std::string& name = "p child" );
-    const std::string& get_p_name() const { return m_p_name; }
     int get_children_amt(){ return (int)m_children.size(); } 
     Child * get_child(int sn);/* sn 番目の子を返す。無ければNULL返す。 */
     bool has_child(Child * cp); /* その子はあんたの子か。 */
@@ -61,7 +64,6 @@ namespace pfamily
     virtual int add(Child& c);
     int remove_child(Child * cp); /* リストからcp削除。 */
   private:
-    const std::string m_p_name = "";
     std::vector <Child *> m_children;
   };
 

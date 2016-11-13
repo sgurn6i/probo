@@ -99,7 +99,7 @@ static int parent_get_children_amt_lua(lua_State* L)
 static int parent_get_name_lua(lua_State* L)
 {
   pfamily::Parent * obj = DCAST_LUA_UD( L, pfamily::Parent*, lua_touserdata(L,1) );
-  const std::string name = obj->get_p_name();
+  const std::string name = obj->get_name();
   lua_pushstring(L, name.c_str());
   return 1;
 }

@@ -17,6 +17,7 @@ namespace pfamily
   {
   public:
     virtual ~Base(){ }
+    virtual const std::string& get_name() const;
   };
 
   class Parent;
@@ -27,7 +28,6 @@ namespace pfamily
     friend class Parent;
   public:
     int get_sn() const;
-    const std::string& get_name();
     Parent& get_parent() const;
   protected:
     Child(Parent& parent, int sn, const std::string& name);
@@ -41,7 +41,6 @@ namespace pfamily
     Parent(const std::string& name = "parent");
     virtual ~Parent();
     virtual Child * create_child( const std::string& name = "p child" );
-    const std::string& get_p_name();
     int get_children_amt();
     Child * get_child(int sn);
     bool has_child(Child * cp);

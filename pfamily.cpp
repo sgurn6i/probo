@@ -3,6 +3,7 @@
    2016-06-17 16:22:46 Sgurn6i
 */
 #include "pfamily.hpp"
+using pfamily::Base;
 using pfamily::Child;
 using pfamily::Parent;
 using pfamily::TestBody;
@@ -12,14 +13,19 @@ using pfamily::TestController;
 #define LOG_TAG "pfamily"
 
 Parent::Parent(const std::string& name)
-  : m_p_name(name)
 {
   LOGD("Parent(%s)", name.c_str());
+  set_name(name);
+}
+
+Parent::Parent()
+{
+  LOGD("Parent(), no name");
 }
 
 Parent::~Parent()
 {
-  LOGD("~Parent(%s)", get_p_name().c_str());
+  LOGD("~Parent(%s)", get_name().c_str());
   /* delete children */
   while (! m_children.empty())
     {
@@ -85,9 +91,10 @@ int Parent::remove_child(Child * cp)
 }
 
 Child::Child(Parent& parent, int sn, const std::string& name)
-  : m_name(name), m_sn(parent.get_children_amt()), m_parent_p(&parent)
+  : m_sn(parent.get_children_amt()), m_parent_p(&parent)
 {
   LOGD("Child(%s) #%d", name.c_str(), m_sn);
+  set_name(name);
 }
 
 Child::~Child(){
@@ -139,7 +146,7 @@ int pfamily::test_main(int argc, char *argv[])
   TestController * fct_a = fbd1->create_controller("fct1_a");
   TestController * fct_b = fbd1->create_controller("fct1_b");
   LOGI("Faily controller %s, parent %s",
-       fct_a->get_name().c_str(), fct_a->get_parent().get_p_name().c_str());
+       fct_a->get_name().c_str(), fct_a->get_parent().get_name().c_str());
   EA1_SAFE_DELETE(fct_b);
   //delete fct_a;
   EA1_SAFE_DELETE(fbd1);
