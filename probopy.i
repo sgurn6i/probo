@@ -4,12 +4,14 @@
  */
 %module probopy
 %{
+  #include "ea1/ea1_benri.h"
   #include "pfamily.hpp"
   #include "probo.hpp"
   #include "probopwm.hpp"
   #include "ppca9685.hpp"
 %}
 %include <std_string.i>
+%include "ea1/ea1_benri.h"
 
 namespace pfamily
 {
@@ -23,7 +25,7 @@ namespace pfamily
   class Parent;
   class Child;
 
-  class Child : public Base
+  class Child : virtual public Base
   {
     friend class Parent;
   public:
@@ -34,7 +36,7 @@ namespace pfamily
     virtual ~Child();
   };
 
-  class Parent : public Base
+  class Parent : virtual public Base
   {
     friend Child::~Child();
   public:
