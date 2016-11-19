@@ -76,3 +76,6 @@ cmake_install.cmake
 install_manifest.txt
 CTestTestfile.cmake
 build*/
+
+## 2016-11-19 16:18:41 python
+*.pyc
