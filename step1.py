@@ -25,7 +25,7 @@ rc = rat1.prepare_pca()
 print "prepare_pca rc =", rc
 
 def set_targets(lps):
-    for leg_key in ratl.leg_keys:
+    for leg_key in ratl.LEG_KEYS:
         rat1.get_leg(leg_key).target(lps[leg_key])
 
 # start pos
