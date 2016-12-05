@@ -20,13 +20,13 @@ stroke_amt = 8 # 一周期のストローク数
 dt1 = 200  # 遷移時間(ms)
 
 # rat
-rat1 = ratl.create_rat1("rat1")
+rat1 = ratl.Ratl(name="rat1")
 rc = rat1.prepare_pca()
 print "prepare_pca rc =", rc
 
 def set_targets(lps):
     for leg_key in ratl.LEG_KEYS:
-        rat1.get_leg(leg_key).target(lps[leg_key])
+        rat1.get_legs()[leg_key].target(lps[leg_key])
 
 # start pos
 lps = {}

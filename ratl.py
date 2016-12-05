@@ -7,6 +7,7 @@ import math
 import copy
 import collections
 import PyKDL
+from PyKDL import Vector
 import probopy
 
 # [パラメータ]
@@ -18,9 +19,11 @@ LEG_JOINT_KEYS = ('hip', 'thigh', 'shin')
 LEG_SW_KEYS = ('foot_sw')
 JOINT_PARAMETER_KEYS = ('offset', 'mag', 'pos_min', 'pos_max')
 SW_PARAMETER_KEYS = ('on')
-PWMSERVO_KEYS = ('ch', 'type')
-SEG_KEYS = {'joint', 'tip'}
+PWMSERVO_KEYS = ('ch', 'svtype')
+SEG_PARAMETER_KEYS = ('joint', 'tip')
+LEG_SEG_KEYS = ('body', 'hip', 'thigh', 'shin', 'foot_x', 'foot_y', 'foot_z')
 
+# パラメータ格納クラス。
 class Md(collections.Mapping):
     u"""Mapping data コンテナ。
     key=value で指定されたデータを要素とする辞書として働く。
@@ -42,35 +45,30 @@ class Md(collections.Mapping):
         return self._data[key]
     def __iter__(self):
         return iter(self._data)
+
+# joint, sw 
 class MdJoint(Md):
     u"""Md の内、key が JOINT_PARAMETER_KEYS に含まれていなければならないもの。
     """
-    def __init_(self, **kwargs):
+    def __init__(self, **kwargs):
         for key, val in kwargs.items():
             assert(key in JOINT_PARAMETER_KEYS)
         Md.__init__(self, **kwargs)
 class MdSw(Md):
     u"""Md の内、key が SW_PARAMETER_KEYS に含まれていなければならないもの。
     """
-    def __init_(self, **kwargs):
+    def __init__(self, **kwargs):
         for key, val in kwargs.items():
             assert(key in SW_PARAMETER_KEYS)
         Md.__init__(self, **kwargs)
-class MdLegw(Md):
-    u"""Md の内、key が LEG_JOINT_KEYS または LEG_SW_KEYS
-    に含まれていなければならないもの。 """
-    def __init__(self, **kwargs):
-        for key, val in kwargs.items():
-            assert((key in LEG_JOINT_KEYS) or (key in LEG_SW_KEYS))
-        Md.__init__(self, **kwargs)
-class MdLegwJoint(MdLegw):
-    u"""MdLegwの内、key が LEG_JOINT_KEYS に含まれていたら、
+class MdLegJoint(Md):
+    u"""Mdの内、key が LEG_JOINT_KEYS に含まれていたら、
     valueはMdJointのインスタンスに限定。
     key が LEG_SW_KEYS に含まれていたら、
     valueはMdSwのインスタンスに限定。
     それら以外のkeyは不可。
     """
-    def __init_(self, **kwargs):
+    def __init__(self, **kwargs):
         for key, val in kwargs.items():
             if key in LEG_JOINT_KEYS:
                 assert(isinstance(val, MdJoint))
@@ -78,116 +76,167 @@ class MdLegwJoint(MdLegw):
                 assert(isinstance(val, MdSw))
             else:
                 raise KeyError , ("unknown key: " + str(key))
-        MdLegw.__init__(self, **kwargs)
-class MdRatw(Md):
-    u"""Md の内、key が LEG_KEYS に含まれていなければならないもの。
-    更に value が MdLegw のインスタンスでなければならない。
+        Md.__init__(self, **kwargs)
+class MdRatJoint(Md):
+    u"""rat joint parameters.
+    Mdの内、key が LEG_KEYS に含まれていなければならないもの。
+    value は MdLegJoint のインスタンスでなければならない。
     """
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
             assert(key in LEG_KEYS)
-            assert(isinstance(val, MdLegw))
+            assert(isinstance(val, MdLegJoint))
         Md.__init__(self, **kwargs)
-class MdRatwJoint(Md):
-    u"""MdRatw の内、value が MdLegwJoint のインスタンスでなければならない。
+
+# PWM servo
+class MdPwmservo(Md):
+    u"""Md の内、key が PWMSERVO_KEYS に含まれていなければならないもの。
+    さらに、そのすべての key を使用している物。
     """
     def __init__(self, **kwargs):
+        assert(len(kwargs) == len(PWMSERVO_KEYS))
         for key, val in kwargs.items():
-            assert(isinstance(val, MdLegwJoint))
+            assert(key in PWMSERVO_KEYS)
         Md.__init__(self, **kwargs)
-class MdLeg(Md):
-    u"""Md の内、key が LEG_JOINT_KEYS に含まれていなければならないもの。 """
+class MdLegPwmservo(Md):
+    u"""Mdの内、keyがLEG_JOINT_KEYSに含まれていなければならないもの。
+    valueはMdJointのインスタンスに限定。
+     """
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
+            assert(isinstance(val, MdPwmservo))
             assert(key in LEG_JOINT_KEYS)
         Md.__init__(self, **kwargs)
-class MdLegSeg(MdLeg):
-    u"""MdLeg の内、value が Seg のインスタンスでなければならないもの。 """
-    def __init__(self, **kwargs):
-        for key, val in kwargs.items():
-            assert(isinstance(val, Seg))
-        MdLeg.__init__(self, **kwargs)
-class MdRat(Md):
+class MdRatPwmservo(Md):
     u"""Md の内、key が LEG_KEYS に含まれていなければならないもの。
-    更に value が MdLeg のインスタンスでなければならない。
+    value が MdLegPwmservo のインスタンスでなければならない。
     """
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
+            assert(isinstance(val, MdLegPwmservo))
             assert(key in LEG_KEYS)
-            assert(isinstance(val, MdLeg))
         Md.__init__(self, **kwargs)
-class MdRatSeg(MdRat):
-    u"""MdRat の内、value が MdLegSeg のインスタンスでなければならない。
+
+# segment
+class MdSeg(Md):
+    u"""Md の内、key が SEG_PARAMETER_KEYS に含まれていなければならないもの。
+    さらに、そのすべての key を使用している物。
+    Attributes:
+      joint: 親につながるrotationalジョイントの軸方向 PyKDL.Vector。
+             Vector(0,0,0) の場合はrigit connection。
+      tip:   jointから先端tipまでの相対位置 PyKDL.Vector(単位mm)。
+    """
+    def __init__(self, **kwargs):
+        assert(len(kwargs) == len(SEG_PARAMETER_KEYS))
+        for key, val in kwargs.items():
+            assert(key in SEG_PARAMETER_KEYS)
+            assert(isinstance(val, Vector))
+        Md.__init__(self, **kwargs)
+class MdLegSeg(Md):
+    u"""Md の内、keyがLEG_SEG_KEYSに含まれていなければならないもの。
+    value が MdSeg のインスタンスでなければならないもの。
+    Attributes:
+      body:   body中心からLeg付け根に至るsegment値。通常 rigit connection。
+      hip:    hip jointにつながるsegment値。
+      thigh:  thigh jointにつながるsegment値。
+      shin:   shin jointにつながるsegment値。
+      foot_x: 足先から地面につながる仮想ジョイントX方向のsegment値。省略可。
+      foot_y: 足先から地面につながる仮想ジョイントY方向のsegment値。省略可。
+      foot_z: 足先から地面につながる仮想ジョイントZ方向のsegment値。省略可。
+    """
+    def __init__(self, foot_x = MdSeg(joint=Vector(1,0,0), tip=Vector(0,0,0)),
+                  foot_y = MdSeg(joint=Vector(0,1,0), tip=Vector(0,0,0)),
+                  foot_z = MdSeg(joint=Vector(0,0,1), tip=Vector(0,0,0)),
+                 **kwargs):
+        for val in foot_x, foot_y, foot_z:
+            assert(isinstance(val, MdSeg))
+        for key, val in kwargs.items():
+            assert(isinstance(val, MdSeg))
+            assert(key in LEG_SEG_KEYS)
+        Md.__init__(self, foot_x=foot_x, foot_y=foot_y, foot_z=foot_z, **kwargs)
+class MdRatSeg(Md):
+    u"""Md の内、keyがLEG_KEYSに含まれていなければならないもの。
+    value が MdLegSeg のインスタンスでなければならない。
     """
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
             assert(isinstance(val, MdLegSeg))
-        MdRat.__init__(self, **kwargs)
+            assert(key in LEG_KEYS)
+        Md.__init__(self, **kwargs)
 
-# rat1 のデフォルト MdRatwJoint インスタンス。
+# rat1 のデフォルト MdRatJoint インスタンス。
 # 足を下に伸ばしきった状態をposゼロとする。
 # ゼロ方向を起点として本体の左側、前側に回る方向を正の方向とする。
 # 右手系 Y軸が進行方向、X軸が右方向、Z軸が上方向。
 # 軸に向かって反時計回りが正の回転方向
-MD_RATW_JOINT1 = MdRatwJoint(
-    lf = MdLegwJoint(hip   = MdJoint(offset=-45.0, mag= 1.0, pos_min= -30.0, pos_max=120.0),
-                     thigh = MdJoint(offset= 25.0, mag= 1.0, pos_min= -70.0, pos_max= 65.0),
-                     shin  = MdJoint(offset=-65.0, mag= 1.0, pos_min= -45.0, pos_max=145.0),
-                     foot_sw = MdSw(on=0)),
-    rf = MdLegwJoint(hip   = MdJoint(offset= 45.0, mag= 1.0, pos_min=-120.0, pos_max= 30.0),
-                     thigh = MdJoint(offset= 25.0, mag=-1.0, pos_min= -70.0, pos_max= 65.0),
-                     shin  = MdJoint(offset=-65.0, mag=-1.0, pos_min= -45.0, pos_max=145.0),
-                     foot_sw = MdSw(on=0)),
-    lb = MdLegwJoint(hip   = MdJoint(offset=-45.0, mag= 1.0, pos_min= -30.0, pos_max=120.0),
-                     thigh = MdJoint(offset= 25.0, mag= 1.0, pos_min= -70.0, pos_max= 65.0),
-                     shin  = MdJoint(offset=-65.0, mag= 1.0, pos_min= -45.0, pos_max=145.0),
-                     foot_sw = MdSw(on=0)),
-    rb = MdLegwJoint(hip   = MdJoint(offset= 45.0, mag= 1.0, pos_min=-120.0, pos_max= 30.0),
-                     thigh = MdJoint(offset= 25.0, mag=-1.0, pos_min= -70.0, pos_max= 65.0),
-                     shin  = MdJoint(offset=-65.0, mag=-1.0, pos_min= -45.0, pos_max=145.0),
-                     foot_sw = MdSw(on=0)),
+MD_RAT_JOINT1 = MdRatJoint(
+    lf = MdLegJoint(hip   = MdJoint(offset=-45.0, mag= 1.0, pos_min= -30.0, pos_max=120.0),
+                    thigh = MdJoint(offset= 25.0, mag= 1.0, pos_min= -70.0, pos_max= 65.0),
+                    shin  = MdJoint(offset=-65.0, mag= 1.0, pos_min= -45.0, pos_max=145.0),
+                    foot_sw = MdSw(on=0)),
+    rf = MdLegJoint(hip   = MdJoint(offset= 45.0, mag= 1.0, pos_min=-120.0, pos_max= 30.0),
+                    thigh = MdJoint(offset= 25.0, mag=-1.0, pos_min= -70.0, pos_max= 65.0),
+                    shin  = MdJoint(offset=-65.0, mag=-1.0, pos_min= -45.0, pos_max=145.0),
+                    foot_sw = MdSw(on=0)),
+    lb = MdLegJoint(hip   = MdJoint(offset=-45.0, mag= 1.0, pos_min= -30.0, pos_max=120.0),
+                    thigh = MdJoint(offset= 25.0, mag= 1.0, pos_min= -70.0, pos_max= 65.0),
+                    shin  = MdJoint(offset=-65.0, mag= 1.0, pos_min= -45.0, pos_max=145.0),
+                    foot_sw = MdSw(on=0)),
+    rb = MdLegJoint(hip   = MdJoint(offset= 45.0, mag= 1.0, pos_min=-120.0, pos_max= 30.0),
+                    thigh = MdJoint(offset= 25.0, mag=-1.0, pos_min= -70.0, pos_max= 65.0),
+                    shin  = MdJoint(offset=-65.0, mag=-1.0, pos_min= -45.0, pos_max=145.0),
+                    foot_sw = MdSw(on=0)),
     )
 
-# 各ジョイントの pwmservo パラメータ
-# {'ch':<servo_ch>, 'type':<probopy.pwmservo_type_enum>}
-pj_pwms1 = {'lf': { 'hip':   {'ch': 0, 'type': probopy.PWM_SV_RS304MD},
-                    'thigh': {'ch': 1, 'type': probopy.PWM_SV_RS304MD},
-                    'shin':  {'ch': 2, 'type': probopy.PWM_SV_RS304MD} },
-            'rf': { 'hip':   {'ch': 8, 'type': probopy.PWM_SV_RS304MD},
-                    'thigh': {'ch': 9, 'type': probopy.PWM_SV_RS304MD},
-                    'shin':  {'ch':10, 'type': probopy.PWM_SV_RS304MD} },
-            'lb': { 'hip':   {'ch': 4, 'type': probopy.PWM_SV_RS304MD},
-                    'thigh': {'ch': 5, 'type': probopy.PWM_SV_RS304MD},
-                    'shin':  {'ch': 6, 'type': probopy.PWM_SV_RS304MD} },
-            'rb': { 'hip':   {'ch':12, 'type': probopy.PWM_SV_RS304MD},
-                    'thigh': {'ch':13, 'type': probopy.PWM_SV_RS304MD},
-                    'shin':  {'ch':14, 'type': probopy.PWM_SV_RS304MD} },}
+# rat1 のデフォルト MdRatPwmservo インスタンス。
+# 各ジョイントの pwmservo パラメータ。
+# {'ch':<servo_ch>, 'svtype':<probopy.pwmservo_type_enum>}
+MD_RAT_PWMSERVO1 = MdRatPwmservo(
+    lf = MdLegPwmservo(hip   = MdPwmservo(ch= 0, svtype=probopy.PWM_SV_RS304MD),
+                       thigh = MdPwmservo(ch= 1, svtype=probopy.PWM_SV_RS304MD),
+                       shin  = MdPwmservo(ch= 2, svtype=probopy.PWM_SV_RS304MD)),
+    rf = MdLegPwmservo(hip   = MdPwmservo(ch= 8, svtype=probopy.PWM_SV_RS304MD),
+                       thigh = MdPwmservo(ch= 9, svtype=probopy.PWM_SV_RS304MD),
+                       shin  = MdPwmservo(ch=10, svtype=probopy.PWM_SV_RS304MD)),
+    lb = MdLegPwmservo(hip   = MdPwmservo(ch= 4, svtype=probopy.PWM_SV_RS304MD),
+                       thigh = MdPwmservo(ch= 5, svtype=probopy.PWM_SV_RS304MD),
+                       shin  = MdPwmservo(ch= 6, svtype=probopy.PWM_SV_RS304MD)),
+    rb = MdLegPwmservo(hip   = MdPwmservo(ch=12, svtype=probopy.PWM_SV_RS304MD),
+                       thigh = MdPwmservo(ch=13, svtype=probopy.PWM_SV_RS304MD),
+                       shin  = MdPwmservo(ch=14, svtype=probopy.PWM_SV_RS304MD)),
+    )
+
 # leg 各segmentの長さ(mm)
-leg_seg_lens = { 'hip': 0.0, 'thigh': 58.0, 'shin': 59.0 }
-# pseg: 各KDL segment パラメータ
-# { leg_key: { leg_joint_key: { seg_key: (x,y,z), ... }, ... }, ... }
-# SEG_KEYS:
-#     'joint': 親につながるジョイントの軸方向ベクトルを表す配列
-#     'tip':   jointから先端tipまでの相対位置ベクトルを表す配列(単位mm)
-pseg1 = {'lf': {'hip':   {'joint':(0, 1, 0), 'tip':(0.0, 0.0, 0.0) },
-                'thigh': {'joint':(1, 0, 0), 'tip':(0.0, 0.0, - leg_seg_lens['thigh']) },
-                'shin':  {'joint':(1, 0, 0), 'tip':(0.0, 0.0, - leg_seg_lens['shin']) },  },
-         'rf': {'hip':   {'joint':(0, 1, 0), 'tip':(0.0, 0.0, 0.0) },
-                'thigh': {'joint':(1, 0, 0), 'tip':(0.0, 0.0, - leg_seg_lens['thigh']) },
-                'shin':  {'joint':(1, 0, 0), 'tip':(0.0, 0.0, - leg_seg_lens['shin']) },  },
-         'lb': {'hip':   {'joint':(0, 1, 0), 'tip':(0.0, 0.0, 0.0) },
-                'thigh': {'joint':(1, 0, 0), 'tip':(0.0, 0.0, - leg_seg_lens['thigh']) },
-                'shin':  {'joint':(1, 0, 0), 'tip':(0.0, 0.0, - leg_seg_lens['shin']) },  },
-         'rb': {'hip':   {'joint':(0, 1, 0), 'tip':(0.0, 0.0, 0.0) },
-                'thigh': {'joint':(1, 0, 0), 'tip':(0.0, 0.0, - leg_seg_lens['thigh']) },
-                'shin':  {'joint':(1, 0, 0), 'tip':(0.0, 0.0, - leg_seg_lens['shin']) },  },}
+#leg_seg_lens = { 'hip': 0.0, 'thigh': 58.0, 'shin': 59.0 }
+
+# 各KDL segment パラメータ デフォルト値
+MD_RAT_SEG1 = MdRatSeg(
+    lf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-64.0, 57.5, 0.0)),
+                  hip   = MdSeg(joint=Vector(0,1,0), tip=Vector(0.0, 0.0,   0.0)),
+                  thigh = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -58.0)),
+                  shin  = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -59.0))),
+    rf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector( 64.0, 57.5, 0.0)),
+                  hip   = MdSeg(joint=Vector(0,1,0), tip=Vector(0.0, 0.0,   0.0)),
+                  thigh = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -58.0)),
+                  shin  = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -59.0))),
+    lb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-64.0,-57.5, 0.0)),
+                  hip   = MdSeg(joint=Vector(0,1,0), tip=Vector(0.0, 0.0,   0.0)),
+                  thigh = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -58.0)),
+                  shin  = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -59.0))),
+    rb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector( 64.0,-57.5, 0.0)),
+                  hip   = MdSeg(joint=Vector(0,1,0), tip=Vector(0.0, 0.0,   0.0)),
+                  thigh = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -58.0)),
+                  shin  = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -59.0))),
+    )
 
 # 算数
-pi = math.pi
+PI = math.pi
 def get_deg(rad):
-    return 180.0 * (rad / pi)
+    u"""角度 radian を degree に変えて出力"""
+    return 180.0 * (rad / PI)
 def get_rad(deg):
-    return pi * (deg / 180.0)
+    u"""角度 degree を radian に変えて出力"""
+    return PI * (deg / 180.0)
 
 class Magj:
     u"""Magnified Joint.
@@ -250,7 +299,7 @@ class Magj:
         return self._joint.get_name()
     def get_joint(self):
         u"""probopy.Jointインスタンスを返す。"""
-        return self._joipnt
+        return self._joint
     def get_mag(self):
         u"""mag 値を返す。"""
         return self._mag;
@@ -277,17 +326,17 @@ class Leg:
     u"""足。hip, thigh, shin(, foot_sw)からなる一本の足。
     Attributes:
       ctj:           joint controller。probopy.Controllerインスタンス。
-      md_legw_joint: joint parameter。MdLegwJointインスタンス。
+      md_leg_joint: joint parameter。MdLegJointインスタンス。
       name:          このインスタンスの名前 str。
     """
-    def __init__(self, ctj, md_legw_joint, name=""):
-        assert(isinstance(md_legw_joint, MdLegwJoint))
+    def __init__(self, ctj, md_leg_joint, name=""):
+        assert(isinstance(md_leg_joint, MdLegJoint))
         self._name = name
         self._mjs = {}
         self._ctj = ctj
         # Todo: mj_dict item数チェック
-        for key in md_legw_joint:
-            md = md_legw_joint[key]
+        for key in md_leg_joint:
+            md = md_leg_joint[key]
             if isinstance(md, MdJoint):
                 jt_name = "%s_jt_%s" % (name, key)
                 jt = self._ctj.create_joint(jt_name)
@@ -307,6 +356,7 @@ class Leg:
         u"""取り込んだMagjの辞書を返す。
         LEG_JOINT_KEYS をキーとする。
         """
+        return self._mjs
     def get_mj(self, key):
         u"""keyに対応するMagjインスタンスを返す。"""
         return self._mjs[key]
@@ -326,29 +376,136 @@ class Leg:
         値は、LEG_JOINT_KEYS のメンバをkeyとするpos_dictによって与えられる。
         pos_dict = {'hip':10.0, 'thigh':20.0, 'shin':30.0} 等。
         一部だけ設定するのも可。
+        余計なkey ('foot_x'等)は無視する。
         """
         for key in pos_dict:
-            self._mjs[key].target(pos_dict[key])
-
+            if key in LEG_JOINT_KEYS:
+                self._mjs[key].target(pos_dict[key])
+    def set_kdl_segs(self, md_leg_seg):
+        u""" set KDL segments.
+        Arguments:
+          md_leg_seg: セグメントパラメータ。MdLegSegインスタンス。
+        """
+        self._kdl_chain = PyKDL.Chain()
+        for key in LEG_SEG_KEYS:
+            name = "%s_%s" % (self._name, key)
+            o0 = PyKDL.Vector(0,0,0)
+            if key in md_leg_seg:
+                md_seg = md_leg_seg[key]
+            else:
+                md_seg = MdSeg(joint=Vector(0,0,0), tip=Vector(0,0,0))
+            if md_seg['joint'] == Vector(0,0,0):
+                kdl_joint = PyKDL.Joint("j_" + name, PyKDL.Joint.None)
+            else:
+                kdl_joint = PyKDL.Joint("j_" + name, o0, md_seg['joint'],
+                                        PyKDL.Joint.RotAxis)
+            kdl_tip = PyKDL.Frame(md_seg['tip'])
+            kdl_seg = PyKDL.Segment("s_" + name, kdl_joint, kdl_tip)
+            self._kdl_chain.addSegment(kdl_seg)
+        self._kdl_fksolver = PyKDL.ChainFkSolverPos_recursive(self._kdl_chain)
+        self._kdl_iksolver_vel = PyKDL.ChainIkSolverVel_pinv(self._kdl_chain)
+        self._kdl_iksolver = PyKDL.ChainIkSolverPos_NR(
+            self._kdl_chain, self._kdl_fksolver, self._kdl_iksolver_vel, 100, 1e-6)
+    def get_kdl_jnt_array(self):
+        u""" get current joint values of PyKDL chain.
+        Returns:
+          j_array: instance of PyKDL.JntArray. with current joint values.
+        """
+        n_j = self._kdl_chain.getNrOfJoints()
+        n_seg = self._kdl_chain.getNrOfSegments()
+        j_array = PyKDL.JntArray(n_j)
+        assert n_seg == len(LEG_SEG_KEYS), "%d != %d" %(n_j, len(LEG_SEG_KEYS))
+        ix_j = 0
+        for ix_seg in range(n_seg):
+            key = LEG_SEG_KEYS[ix_seg]
+            seg = self._kdl_chain.getSegment(ix_seg)
+            if seg.getJoint().getType() != PyKDL.Joint.None:
+                if key in LEG_JOINT_KEYS:
+                    pos = self.get_mjs()[key].get_curr_pos()
+                else:
+                    pos = 0.0
+                j_array[ix_j] = get_rad(pos)
+                ix_j += 1
+        return j_array
+        
+    def get_fk_vec(self):
+        u""" get current forward kinetic position vector.
+        Returns:
+          vec: 現在の足先位置を表す PyKDL.Vectorインスタンス。
+          rc:  PyKDL fk solver JntToCart()メソッドのリターンコード。
+        """
+        j_array = self.get_kdl_jnt_array()
+        frame = PyKDL.Frame()
+        rc = self._kdl_fksolver.JntToCart(j_array, frame)
+        return frame.p, rc
+    def calc_ik_jnt_array(self, vec):
+        u""" 現在位置から vec に移動した場合の PyKdl.JntArray計算値を返す。
+        Arguments:
+          vec: ターゲット足先位置を表す PyKDL.Vectorインスタンス。
+        Returns:
+          j_array: calculated instance of PyKDL.JntArray. 
+          rc: PyKDL ik solver CartToJnt()メソッドのリターンコード。
+        """
+        j_start = self.get_kdl_jnt_array()
+        f_end = PyKDL.Frame(vec)
+        n_j = self._kdl_chain.getNrOfJoints()
+        j_array = PyKDL.JntArray(n_j)
+        rc = self._kdl_iksolver.CartToJnt(j_start, f_end, j_array)
+        return j_array, rc
+    def calc_ik_pos(self, vec):
+        u""" 現在位置から vec に移動した場合の joint positions計算値を返す。
+        Arguments:
+          vec:      ターゲット足先位置を表す PyKDL.Vectorインスタンス。
+        Returns:
+          pos_dict: LEG_SEG_KEYS のメンバのうちjointを有するものをkeyとする 
+                    joint positionの辞書。
+          rc:       PyKDL ik solver CartToJnt()メソッドのリターンコード。
+        """
+        pos_dict = {}
+        for key in LEG_JOINT_KEYS:
+            pos_dict[key] = 0.0
+        j_array, rc = self.calc_ik_jnt_array(vec)
+        n_j = self._kdl_chain.getNrOfJoints()
+        n_seg = self._kdl_chain.getNrOfSegments()
+        ix_j = 0
+        for ix_seg in range(n_seg):
+            key = LEG_SEG_KEYS[ix_seg]
+            seg = self._kdl_chain.getSegment(ix_seg)
+            if seg.getJoint().getType() != PyKDL.Joint.None:
+                if key in LEG_SEG_KEYS:
+                    pos_dict[key] = get_deg(j_array[ix_j])
+                ix_j += 1
+        return pos_dict, rc
+    def set_ik_target(self, vec):
+        u""" set inverse kinetic target.
+        Arguments:
+          vec: ターゲット足先位置を表す PyKDL.Vectorインスタンス。
+        Returns:
+          PyKDL ik solver CartToJnt()メソッドのリターンコード。
+        """
+        pos_dict, rc = self.calc_ik_pos(vec)
+        if rc >= 0:
+            self.target(pos_dict)
+        return rc
 
 # 四本足 rat with legs クラス
 class Ratl:
     u""" 通常4本の Leg からなる rat のクラス。
     Attributes:
-      md_ratw_joint: joint parameter。MdRatwJointインスタンス。
+      md_rat_joint: joint parameter。MdRatJointインスタンス。
       name:          このインスタンスの名前 str。
     """
-    def __init__(self, md_ratw_joint=MD_RATW_JOINT1, name="rat1"):
-        assert(isinstance(md_ratw_joint, MdRatwJoint))
+    def __init__(self, md_rat_joint=MD_RAT_JOINT1, name="rat1"):
+        assert(isinstance(md_rat_joint, MdRatJoint))
         self._name = name
         self._body = probopy.Body(name)
         self._ctj = self._body.create_controller(name + "_ctj")
         self._pwmservos = {} # GC阻止の為にpwmservo貯めとく
         self._legs = {}
-        assert(isinstance(md_ratw_joint, MdRatwJoint))
-        for leg_key in md_ratw_joint:
+        assert(isinstance(md_rat_joint, MdRatJoint))
+        for leg_key in md_rat_joint:
             self._legs[leg_key] = Leg(ctj = self._ctj,
-                                      md_legw_joint = md_ratw_joint[leg_key],
+                                      md_leg_joint = md_rat_joint[leg_key],
                                       name=("%s_leg_%s" % (name, leg_key)))
     def __str__(self):
         str1 = "%s %s:\n" % (self.__class__.__name__, self._name)
@@ -360,50 +517,86 @@ class Ratl:
     def get_ctj(self):
         u"""get probo.Controller for joints."""
         return self._ctj
-    def get_leg(self,leg_key):
-        u""" get probo.Leg.
-        leg_key in LEG_KEYS.
+    def get_legs(self):
+        u""" 保有するLegの辞書、
+        即ち LEG_KEYS をキーとし、probo.Leg インスタンスを値とする辞書を返す。
         """
-        return self._legs[leg_key]
-    def set_pwm(self, pwmc, pj_pwms=pj_pwms1):
+        return self._legs
+    def set_pwm(self, pwmc, md_rat_pwmservo=MD_RAT_PWMSERVO1):
         u""" set pwm controller and pwm servo interfaces.
-        pwmc = probopy.Pwmc init済を期待する。
-        pj_pwms = 各ジョイントの pwmservo パラメータ
-                  {leg_key: {leg_joint_key: {pwmservo_key:<val>, ...}, ...}, ... }
+        Arguments:
+          pwmc: probopy.Pwmc init済を期待する。
+          md_rat_pwmservo: MdRatPwmservoインスタンス。各ジョイントの pwmservo パラメータ。
         返り値: probopy.EA1_OK, or probopy.ea1_status_enum。
         """
+        assert(isinstance(md_rat_pwmservo, MdRatPwmservo))
         rc = self._ctj.attach_pwmc(pwmc)
         if rc == probopy.EA1_OK:
-            for leg_key in pj_pwms:
+            for leg_key in md_rat_pwmservo:
                 self._pwmservos[leg_key] = {}
-                for joint_key in pj_pwms[leg_key]:
+                for joint_key in md_rat_pwmservo[leg_key]:
                     joint = self._legs[leg_key].get_mj(joint_key).get_joint()
-                    # 引数省略に備える
-                    dargs = copy.deepcopy(pj_pwms1[leg_key][joint_key])
-                    for key in pj_pwms[leg_key][joint_key]:
-                        dargs[key] = pj_pwms[leg_key][joint_key][key]
-                    pwmservo = probopy.Pwmservo(dargs['ch'], dargs['type'])
+                    dargs = MD_RAT_PWMSERVO1[leg_key][joint_key]
+                    pwmservo = probopy.Pwmservo(dargs['ch'], dargs['svtype'])
                     self._pwmservos[leg_key][joint_key] = pwmservo
                     rc = joint.attach_pwmservo(pwmservo)
                     if rc != probopy.EA1_OK: return rc
         return rc
-    def prepare_pca(self, device="/dev/i2c-1", i2c_addr=0x40, pwm_freq=60.0):
+    def prepare_pca(self, device="/dev/i2c-1", i2c_addr=0x40, pwm_freq=60.0,
+                    md_rat_pwmservo=MD_RAT_PWMSERVO1):
         u""" prepare PCA9685 controller and servomotors.
         connect to i2c device,
         set RS304MD servo channels.
+        Arguments:
+          device:   i2c device name string
+          i2c_addr: i2c address of the device.
+          pwm_freq: PWM frequency(Hz).
+          md_rat_pwmservo: MdRatPwmservoインスタンス。各ジョイントの pwmservo パラメータ。
         returns:
             probopy.EA1_OK, or probopy.ea1_status_enum。
         """
         self._pca1 = probopy.Pca9685()
         rc = self._pca1.init(device, i2c_addr, pwm_freq)
         if rc == probopy.EA1_OK:
-            rc = self.set_pwm(self._pca1)
+            rc = self.set_pwm(self._pca1, md_rat_pwmservo)
         return rc
+    def set_kdl_segs(self, md_rat_seg=MD_RAT_SEG1):
+        u""" set KDL segments.
+        Arguments:
+          md_rat_seg: セグメントパラメータ。MdRatSegインスタンス。
+        """
+        assert(isinstance(md_rat_seg, MdRatSeg))
+        for key, val in md_rat_seg.items():
+            self._legs[key].set_kdl_segs(val)
+            
         
 def create_rat1(name="rat1"):
-    u""" pj1をジョイントパラメータとするRatlインスタンスを生成して返す。
+    u""" MD_RAT_JOINT1をジョイントパラメータとするRatlインスタンスを生成して返す。
     """
     rat1 = Ratl(name = name)
     return rat1
 
+# お試し
+if __name__ == '__main__':
+    rat1 = Ratl(name="ratl")
+    rat1.set_kdl_segs()
+    # fk
+    target_hts = {'hip':0, 'thigh':0, 'shin': 0}
+    for leg_key in LEG_KEYS:
+        rat1.get_legs()[leg_key].target(target_hts)
+    rat1.get_body().do_em_in(10)
+    vec0, rc = rat1.get_legs()['lf'].get_fk_vec()
+    print type(vec0)
+    print "zero hts", target_hts
+    print "zero xyz", vec0
+    target_hts = {'hip':0, 'thigh':-22.5, 'shin': 45.0}
+    for leg_key in LEG_KEYS:
+        rat1.get_legs()[leg_key].target(target_hts)
+    rat1.get_body().do_em_in(10)
+    vec1, rc = rat1.get_legs()['lf'].get_fk_vec()
+    print "newtral hts", target_hts
+    print "neutral xyz", vec1
+    vec1[1] += 10
+    hts2,rc = rat1.get_legs()['lf'].calc_ik_pos(vec1)
+    print "rc = %d, hts2 %s" % (rc, hts2)
 
