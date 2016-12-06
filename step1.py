@@ -23,6 +23,7 @@ dt1 = 200  # 遷移時間(ms)
 rat1 = ratl.Ratl(name="rat1")
 rc = rat1.prepare_pca()
 print "prepare_pca rc =", rc
+rat1.set_kdl_segs()
 
 def set_targets(lps):
     for leg_key in ratl.LEG_KEYS:
@@ -73,7 +74,8 @@ for cyc1 in range(0, 15):
             lps["rf"] = lp2
         set_targets(lps)
         rat1.get_body().do_em_in(dt1)
-
+        for leg_key in ratl.LEG_KEYS:
+            print stroke, leg_key, rat1.get_legs()[leg_key].get_fk_vec()
         
         
         
