@@ -26,7 +26,6 @@ LEG_OFFSETS = {'lf' : Vector(0, 10.0, 0),
                'lb' : Vector(0, -10.0, 0),
                'rb' : Vector(0, -10.0, 0), }
 
-
 # rat
 rat1 = ratl.Ratl(name="rat1")
 rat1.set_kdl_segs()

@@ -35,7 +35,7 @@ print "prepare_pca rc =", rc
 
 # start pos
 for leg_key in ratl.LEG_KEYS:
-    rat1.get_legs()[leg_key].target(lp_neutral)
+    rat1.get_legs()[leg_key].target(**lp_neutral)
 rat1.get_body().do_em_in(0)
 rat1.get_body().do_em_in(dt1)
 print "ready to start"
@@ -115,8 +115,8 @@ for cyc1 in range(0, 25):
             dvecs["rb"] = Vector(0, STY1, 0)
         set_dvec_targets(dvecs)
         rat1.get_body().do_em_in(dt1)
-        for leg_key in ratl.LEG_KEYS:
-            print stroke, leg_key, rat1.get_legs()[leg_key].get_fk_vec()
+        # for leg_key in ratl.LEG_KEYS:
+        #     print stroke, leg_key, rat1.get_legs()[leg_key].get_fk_vec()
 
         
         

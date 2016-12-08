@@ -371,13 +371,35 @@ class Leg:
             first = False
             str1 += str(mj.get_curr_pos())
         return (str1)
-    def target(self, pos_dict):
+    def target(self, *args, **kwargs):
         u"""各Magjのtarget posを設定する。
+        一部だけ設定するのも可。
+        Arguments:
+          hip:   hip position数値 (degree)。
+          thigh: thigh position数値 (degree)。
+          shin:  shin position数値 (degree)。
+        旧仕様:
         値は、LEG_JOINT_KEYS のメンバをkeyとするpos_dictによって与えられる。
         pos_dict = {'hip':10.0, 'thigh':20.0, 'shin':30.0} 等。
         一部だけ設定するのも可。
         余計なkey ('foot_x'等)は無視する。
         """
+        # 引数解釈
+        pos_dict = {}
+        ix = 0 
+        for arg in args:
+            if isinstance(arg, dict): # 旧仕様
+                pos_dict = arg
+            else:
+                if ix <= 3:
+                    pos_dict[LEG_JOINT_KEYS[ix]] = arg
+                    ix += 1
+        for key in kwargs:
+            if key == 'pos_dict':
+                pos_dict = kwargs[key]
+            else:
+                pos_dict[key] = kwargs[key]
+        # 関数実行    
         for key in pos_dict:
             if key in LEG_JOINT_KEYS:
                 self._mjs[key].target(pos_dict[key])
@@ -581,17 +603,15 @@ if __name__ == '__main__':
     rat1 = Ratl(name="ratl")
     rat1.set_kdl_segs()
     # fk
-    target_hts = {'hip':0, 'thigh':0, 'shin': 0}
     for leg_key in LEG_KEYS:
-        rat1.get_legs()[leg_key].target(target_hts)
+        rat1.get_legs()[leg_key].target(0, 0, 0)
     rat1.get_body().do_em_in(10)
     vec0, rc = rat1.get_legs()['lf'].get_fk_vec()
     print type(vec0)
-    print "zero hts", target_hts
     print "zero xyz", vec0
     target_hts = {'hip':0, 'thigh':-22.5, 'shin': 45.0}
     for leg_key in LEG_KEYS:
-        rat1.get_legs()[leg_key].target(target_hts)
+        rat1.get_legs()[leg_key].target(**target_hts)
     rat1.get_body().do_em_in(10)
     vec1, rc = rat1.get_legs()['lf'].get_fk_vec()
     print "newtral hts", target_hts
