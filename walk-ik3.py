@@ -10,7 +10,7 @@ lp_neutral = {'hip': 2.0, 'thigh':  -28.0, 'shin': 55.0}
 
 # params
 stroke_amt = 8 # 一周期のストローク数
-dt1 = 50  # 遷移時間(ms)
+dt1 = 80  # 遷移時間(ms)
 # step width constants(mm)
 STZ = 20
 STX = 10
@@ -21,10 +21,10 @@ STY2 = STY * 2
 STY3 = STY * 3
 STY4 = STY * 4
 # leg offsets
-LEG_OFFSETS = {'lf' : Vector(0, 0.0, 2),
-               'rf' : Vector(0, 0.0, -3),
-               'lb' : Vector(0, -10.0, 2),
-               'rb' : Vector(0, -10.0, -3), }
+LEG_OFFSETS = {'lf' : Vector(0, 0.0, 0),
+               'rf' : Vector(0, 0.0, 0),
+               'lb' : Vector(0, -0.0, 0),
+               'rb' : Vector(0, -0.0, 0), }
 
 # rat
 rat1 = ratl.Ratl(name="rat1")
@@ -69,7 +69,7 @@ rat1.get_body().do_em_in(dt1)
 aa = raw_input('press enter > ')
 
 # walk
-for cyc1 in range(0, 25):
+for cyc1 in range(0, 20):
     print "cycle", cyc1
     for stroke in range(0, stroke_amt):
         dvecs = {}
