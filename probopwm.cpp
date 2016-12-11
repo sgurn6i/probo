@@ -102,3 +102,17 @@ double Pwmservo::get_pw( double deg )
       return -1.0;
     }
 }
+
+int Pwmservo::set_curr_deg( double deg, Hwc * hwc )
+{
+  int rc = EA1_OK;
+  Pwmc * pwmc = dynamic_cast<Pwmc *>(hwc);
+  if (pwmc != NULL)
+    {
+      rc = pwmc->set_pwm_width(get_ch(), get_pw(deg));
+    }
+  if (rc >= 0)
+    m_curr_deg = deg;
+
+  return rc;
+}

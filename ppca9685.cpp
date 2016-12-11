@@ -301,6 +301,12 @@ int probo::Pca9685::cal_osc_freq( double osc_freq )
   return rc;
 }
 
+bool probo::Pca9685::is_acceptable(Hwj * hwj)
+{
+  probo::Pwmservo * pwms = dynamic_cast<probo::Pwmservo *>(hwj);
+  return (pwms != NULL);
+}
+
 /* test function */
 int probo::test_ppca9685(int argc, char *argv[])
 {

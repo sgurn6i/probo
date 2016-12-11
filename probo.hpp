@@ -14,7 +14,7 @@ namespace probo
   class Joint; /* 関節ジョイント */
   class Sensor; /* センサ予定 */
   class Controller; /* コントローラー。シリアル通信他 */
-  class Pwmc; /* probopwm.hpp */
+  class Hwc; /* アタッチされるハードウェアコントローラ。 */
   /* 親玉本体 */
   class Body : public pfamily::Parent
   {
@@ -42,48 +42,78 @@ namespace probo
   public:
     virtual ~Controller(){ }
     virtual int go_target_at( double percent ); /* ターゲットのpercent % まで進め */
-    virtual void update_pos(); /* previous position を現在位置にアップデートせよ。 */
+     /* previous position が現在位置になるようにアップデートせよ。 */
+    virtual void update_pos();
     Body& get_body() const { return (Body&)get_parent(); }
     virtual Joint * create_joint( const std::string& name = "j" );
     /* pwm */
-    int attach_pwmc( Pwmc& pwmc ); /* init済のpwmcをattachする。 */
-    void detach_pwmc(){ m_pwmc = NULL; }
-    Pwmc * get_pwmc() const { return m_pwmc; }
+    int attach_hwc( Hwc& hwc ); /* init済のhwcをattachする。 */
+    void detach_hwc(){ m_hwc = NULL; }
+    Hwc * get_hwc() const { return m_hwc; }
   protected:
     Controller( Body& body, int sn, const std::string& name );
   private:
-    int control_joint_hw ( Joint& joint );  /* jointに付随するハードウェアを動かす。 */
-    int control_joint_pwm_hw ( Joint& joint );  /* jointに付随するPWMハードウェアを動かす。 */
-    Pwmc * m_pwmc;
+    Hwc * m_hwc;
   };
 
-  class Pwmservo; /* probopwm.hpp */
+  class Hwj;
   class Joint :
     public pfamily::Child
   {
     friend Joint * Controller::create_joint( const std::string& name);
   public:
     virtual ~Joint(){}
-    int target(double pos);   /* ターゲットposition設定。 */
+    /* ターゲットposition設定。 */
+    int target(double pos);
     double get_curr_pos() const { return m_curr_pos; }
     /* Controllerからの指令。 */
     virtual int go_target_at(double percent);
     virtual void update_pos();
     /* PWM servo関係 */
-    int attach_pwmservo( Pwmservo& pwmservo ); /* init済のpwmservoをattachする。
-                                                  先にControllerにPwmcが付いているを期待する。 */
-    void detach_pwmservo() { m_pwmservo = NULL; }
-    Pwmservo * get_pwmservo() const { return m_pwmservo; }
+    /* init済のhwjをattachする。先にControllerにHwcが付いているを期待する。 */
+    int attach_hwj( Hwj& hwj );
+    void detach_hwj() { m_hwj = NULL; }
+    Hwj * get_hwj() const { return m_hwj; }
   protected:
     Joint(Controller& controller, int sn, const std::string& name) :
-      pfamily::Child::Child(controller,sn,name)
+      pfamily::Child::Child(controller,sn,name),
+      m_hwj(NULL)
     { }
+    Hwc * get_hwc();
   private:
     double m_target_pos = 0.0;
-    double m_prev_pos = -1000.0;  // 過去位置、動作開始時の位置。
+    double m_prev_pos = -100.0;  // 過去位置、動作開始時の位置。
     double m_curr_pos = 0.0;  // 現在位置
-    Pwmservo * m_pwmservo = NULL;
+    Hwj * m_hwj;
   };
+
+  /* ハードウェアAbstractクラス。 */
+  /* ハードウェアコントローラ */
+  class Hwc : public pfamily::Base
+  {
+  public:
+    virtual ~Hwc(){ };
+    /* 割り当てられる所の最大チャンネル数(固定)を返す。 */
+    virtual int get_ch_amt() const = 0;
+    /* デバイス等の初期化が完了していれば true。 */
+    virtual bool is_initialized() const = 0;
+    /* 与えられた Hwj が受け入れ可能ならtrue。 */
+    virtual bool is_acceptable(Hwj * hwj) = 0;
+  };
+  
+  /* ハードウェアジョイント */
+  class Hwj : public pfamily::Base
+  {
+  public:
+    virtual ~Hwj(){ };
+    virtual bool is_initialized() const = 0;
+    virtual int get_ch() const = 0;
+    /* 現在角度設定 (degree)。hwc がnon-NULLなら設定は hwcにも反映させる。 */
+    virtual int set_curr_deg( double deg, Hwc * hwc) = 0;
+    virtual double get_curr_deg() const = 0;
+    /* Todo: 脱力設定。 */
+  };
+    
 
   /* テスト用関数 */
   int test_main(int argc, char *argv[]);

@@ -55,7 +55,8 @@ namespace probo
   class Joint;
   class Sensor;
   class Controller;
-  class Pwmc;
+  class Hwc;
+  class Hwj;
 
   class Body : public pfamily::Parent
   {
@@ -82,14 +83,13 @@ namespace probo
     Body& get_body() const;
     virtual Joint * create_joint( const std::string& name = "j" );
     /* pwm */
-    int attach_pwmc( Pwmc& pwmc );
-    void detach_pwmc();
-    Pwmc * get_pwmc() const;
+    int attach_hwc( Hwc& hwc );
+    void detach_hwc();
+    Hwc * get_hwc() const;
   protected:
     Controller( Body& body, int sn, const std::string& name );
   };
 
-  class Pwmservo; /* probopwm.hpp */
   class Joint :
     public pfamily::Child
   {
@@ -101,23 +101,43 @@ namespace probo
     virtual int go_target_at(double percent);
     virtual void update_pos();
     /* PWM servo関係 */
-    int attach_pwmservo( Pwmservo& pwmservo );
-    void detach_pwmservo();
-    Pwmservo * get_pwmservo() const;
+    int attach_hwj( Hwj& hwj );
+    void detach_hwj();
+    Hwj * get_hwj() const;
   protected:
     Joint(Controller& controller, int sn, const std::string& name);
   };
 
+  class Hwc : public pfamily::Base
+  {
+  public:
+    virtual ~Hwc(){ };
+    virtual int get_ch_amt() const = 0;
+    virtual bool is_initialized() const = 0;
+    virtual bool is_acceptable(Hwj * hwj) = 0;
+  };
+  
+  class Hwj : public pfamily::Base
+  {
+  public:
+    virtual ~Hwj(){ };
+    virtual bool is_initialized() const = 0;
+    virtual int get_ch() const = 0;
+    virtual int set_curr_deg( double deg, Hwc * hwc) = 0;
+    virtual double get_curr_deg() const = 0;
+  };
+    
   /* probopwm.hpp */
-  class Pwmc : public pfamily::Base
+  class Pwmc : public Hwc
   {
   public:
     virtual ~Pwmc(){ };
     virtual int get_ch_amt() const = 0;
+    virtual bool is_initialized() const = 0;
+    virtual bool is_acceptable(Hwj * hwj) = 0;
     virtual int set_pwm_freq( double freq ) = 0;
     virtual int set_pwm_width( int ch, double t_ms ) = 0;
     virtual double get_pwm_width( int ch ) = 0;
-    virtual bool is_initialized() const = 0;
   protected:
     Pwmc();
   };
@@ -128,10 +148,11 @@ namespace probo
   public:
     /* Pwmc class */
     virtual int get_ch_amt();
+    virtual bool is_initialized() const;
+    virtual bool is_acceptable(Hwj * hwj);
     virtual int set_pwm_freq( double freq );
     virtual int set_pwm_width( int ch, double t_ms );
     virtual double get_pwm_width( int ch );
-    virtual bool is_initialized() const;
     /* ructors */
     Pca9685();
     virtual ~Pca9685();
@@ -162,20 +183,20 @@ namespace probo
 
   //extern const std::map<pwmservo_type_t, pwmservo_params_t> g_pwmservo_type_params;
   
-  class Pwmservo : public pfamily::Base
+  class Pwmservo : public Hwj
   {
   public:
     Pwmservo( int ch = -1, pwmservo_type_t type = PWM_SV_UNKNOWN );
     virtual ~Pwmservo();
     virtual int init( int ch, pwmservo_type_t type );
     virtual int init( int ch, const pwmservo_params_t& params );
-    virtual bool is_initialized() const;
     const pwmservo_params_t * get_params();
-    int get_ch() const;
-    void set_curr_deg( double deg );
-    double get_curr_deg() const;
     double get_curr_pw();
     double get_pw( double deg );
+    virtual bool is_initialized() const;
+    virtual int get_ch() const;
+    virtual int set_curr_deg( double deg, Hwc * hwc );
+    virtual double get_curr_deg() const;
   };
 
 } /* namespace probo */

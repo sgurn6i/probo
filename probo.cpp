@@ -140,7 +140,7 @@ int Body::make_update_pos()
 Controller::Controller(Body& body, int sn, const std::string& name) :
   pfamily::Parent::Parent( name ),
   pfamily::Child::Child( body, sn, name ),
-  m_pwmc( NULL )
+  m_hwc( NULL )
 { }
 
 
@@ -155,38 +155,14 @@ int Controller::go_target_at(double percent)
       Joint * joint = dynamic_cast<Joint *>( get_child( ix ));
       if (joint != NULL)
         {
-          joint->go_target_at( percent );
-          int joint_rc = control_joint_hw( *joint );
+          int joint_rc = joint->go_target_at( percent );
+          if (joint_rc < 0)
+            {
+              LOGE("%s %s: joint %s failed, rc %d",
+                   get_name().c_str(), __func__, joint->get_name().c_str(), joint_rc);
+            }
           if ((rc >= 0) && (joint_rc < 0))
             rc = joint_rc;
-        }
-    }
-  return rc;
-}
-
-int Controller::control_joint_hw( Joint& joint )
-{
-  int rc = EA1_OK;
-  if (m_pwmc != NULL)
-    {
-      rc = control_joint_pwm_hw( joint );
-      if (rc < 0)
-        return rc;
-    }
-  return rc;
-}
-
-int Controller::control_joint_pwm_hw( Joint& joint )
-{
-  int rc = EA1_OK;
-  Pwmservo * pwmservo = joint.get_pwmservo();
-  if (pwmservo != NULL)
-    {
-      rc = m_pwmc->set_pwm_width( pwmservo->get_ch(), pwmservo->get_curr_pw() );
-      if (rc < 0)
-        {
-          LOGE("%s %s: joint %s failed", get_name().c_str(), __func__, joint.get_name().c_str());
-          return rc;
         }
     }
   return rc;
@@ -221,20 +197,21 @@ Joint * Controller::create_joint(const std::string& name)
   return jp;
 }
 
-int Controller::attach_pwmc( probo::Pwmc& pwmc )
+int Controller::attach_hwc( probo::Hwc& hwc )
 {
   int rc = EA1_OK;
-  if (! pwmc.is_initialized())
+  if (! hwc.is_initialized())
     {
-      LOGE("%s: pwmc is not initialized", __func__);
+      LOGE("%s: hwc is not initialized", __func__);
       return EA1_E_NOT_READY;
     }
-  m_pwmc = &pwmc;
+  m_hwc = &hwc;
   return rc;
 }
 
 int Joint::go_target_at(double percent)
 {
+  int rc = EA1_OK;
   double ratio = percent * 0.01;
   if (ratio < 0.0) ratio = 0.0;
   if (ratio > 1.0) ratio = 1.0;
@@ -244,21 +221,22 @@ int Joint::go_target_at(double percent)
   if(! NEAR_POS(m_curr_pos, new_curr_pos, 1.0e-5))
     {
       m_curr_pos = new_curr_pos;
-      if (m_pwmservo != NULL)
+      Hwc * hwc = get_hwc();
+      if (m_hwj != NULL)
         {
-          m_pwmservo->set_curr_deg( m_curr_pos );
+          rc = m_hwj->set_curr_deg( m_curr_pos, hwc );
         }
     }
-  LOGD("%s %s: %f %% pos %f", get_name().c_str(), __func__, percent, m_curr_pos);
-  return EA1_OK;
+  LOGD("%s %s: %f %% pos %f rc %d", get_name().c_str(), __func__, percent, m_curr_pos, rc);
+  return rc;
 }
 
 void Joint::update_pos()
 {
   m_prev_pos = m_curr_pos;
-  if (m_pwmservo != NULL)
+  if (m_hwj != NULL)
     {
-      m_pwmservo->set_curr_deg( m_curr_pos );
+      m_hwj->set_curr_deg( m_curr_pos, NULL ); /* Todo: 不要かも */
     }
  }
 
@@ -270,30 +248,36 @@ int Joint::target(double pos)
   return EA1_OK;
 }
 
-int Joint::attach_pwmservo( probo::Pwmservo& pwmservo )
+probo::Hwc * Joint::get_hwc()
+{
+  Controller * controller = dynamic_cast<Controller *>( &get_parent() );
+  Hwc * hwc = NULL;
+  if (controller != NULL)
+    hwc = controller->get_hwc();
+  return hwc;
+}
+
+int Joint::attach_hwj( probo::Hwj& hwj )
 {
   int rc = EA1_OK;
-  if (! pwmservo.is_initialized())
+  if (! hwj.is_initialized())
     {
-      LOGE("%s %s: pwmservo is not initialized", get_name().c_str(), __func__);
+      LOGE("%s %s: hwj is not initialized", get_name().c_str(), __func__);
       return EA1_E_NOT_READY;
     }
-  Controller * controller = dynamic_cast<Controller *>( &get_parent() );
-  probo::Pwmc * pwmc = NULL;
-  if (controller != NULL)
-    pwmc = controller->get_pwmc();
-  if (pwmc == NULL)
+  Hwc * hwc = get_hwc();
+  if (hwc == NULL)
     {
-      LOGE("%s %s: no pwmc was attached", get_name().c_str(), __func__);
+      LOGE("%s %s: no hwc was attached", get_name().c_str(), __func__);
       return EA1_E_NOT_READY;
     }
-  /* jointの親のcontrollerに付いてるpwmcのチャンネル範囲を超えたらエラー。 */
-  if ((pwmservo.get_ch() < 0) || (pwmservo.get_ch() >= pwmc->get_ch_amt()))
+  /* jointの親のcontrollerに付いてるhwcのチャンネル範囲を超えたらエラー。 */
+  if ((hwj.get_ch() < 0) || (hwj.get_ch() >= hwc->get_ch_amt()))
     {
-      LOGE("%s %s: pwmservo ch %d out of range 0 .. %d",
-           get_name().c_str(), __func__, pwmservo.get_ch(), pwmc->get_ch_amt() - 1);
+      LOGE("%s %s: hwj ch %d out of range 0 .. %d",
+           get_name().c_str(), __func__, hwj.get_ch(), hwc->get_ch_amt() - 1);
     }
-  m_pwmservo = &pwmservo;
+  m_hwj = &hwj;
   return rc;
 }
 
@@ -313,11 +297,11 @@ int probo::test_main(int argc, char *argv[])
   /* pwm */
   probo::Pca9685 * pca9685 = new probo::Pca9685();
   pca9685->init( "/dev/i2c-2", 0x40, 100.0 );
-  ct1->attach_pwmc( *pca9685 );
+  ct1->attach_hwc( *pca9685 );
   probo::Pwmservo * sv1 = new probo::Pwmservo( 0, PWM_SV_RS304MD );
   probo::Pwmservo * sv2 = new probo::Pwmservo( 1, PWM_SV_RS304MD );
-  j11->attach_pwmservo( *sv1 );
-  j12->attach_pwmservo( *sv2 );
+  j11->attach_hwj( *sv1 );
+  j12->attach_hwj( *sv2 );
   /* sequence */
   body1->set_tick(20.0);
   j11->target(90.0);

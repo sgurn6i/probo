@@ -19,6 +19,7 @@ namespace probo
     virtual int set_pwm_width( int ch, double t_ms );
     virtual double get_pwm_width( int ch );
     virtual bool is_initialized() const { return m_initialized; }
+    virtual bool is_acceptable(Hwj * hwj);
     /* ructors */
     Pca9685();
     virtual ~Pca9685();
