@@ -13,7 +13,7 @@ namespace probo
   class Pca9685 : public Pwmc
   {
   public:
-    /* Pwmc class */
+    /* Pwmc class からの継承関数。 */
     virtual int get_ch_amt() const { return m_ch_amt; }
     virtual int set_pwm_freq( double freq );
     virtual int set_pwm_width( int ch, double t_ms );
@@ -26,8 +26,10 @@ namespace probo
     int init( const std::string& device = "/dev/i2c-2", int i2c_addr = 0x40, double pwm_freq = 60.0 );
     const std::string& get_device() const { return m_device; }
     int get_i2c_addr() const { return m_i2c_addr; }
-    int cal_osc_freq( double osc_freq );    /* 公称25MHz内部オシレータ周波数設定。calibration用。 */
-    uint8_t read_reg( uint8_t addr ); /* for debug */
+    /* 公称25MHz内部オシレータ周波数設定。calibration用。 */
+    int cal_osc_freq( double osc_freq );
+    /* for debug */
+    uint8_t read_reg( uint8_t addr );
   protected:
     void write8( uint8_t addr, uint8_t data );
     void write16( uint8_t addr, uint16_t data );

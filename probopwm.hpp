@@ -15,12 +15,17 @@ namespace probo
   public:
     virtual ~Pwmc(){ };
     //virtual int init( const std::string& device, int address ) = 0; /* 初期化はそれぞれのクラスで独自に行なう。 */
+    /* 割り当てられる所の最大チャンネル数(固定)を返す。 */
     virtual int get_ch_amt() const = 0;
-    virtual int set_pwm_freq( double freq ) = 0;   /* PWM周波数(Hz)設定。 */
-    virtual int set_pwm_width( int ch, double t_ms ) = 0; /* ch のパルス幅t_ms(msec) を指定する。 
-                                                           * 負数だとパルスを出さない。 */
+    /* PWM周波数 freq (Hz) を設定する。 */
+    virtual int set_pwm_freq( double freq ) = 0;
+    /* 指定されたチャンネル ch のパルス幅 t_ms (msec) を設定する。
+     * 負数だとパルスを出さない。 */
+    virtual int set_pwm_width( int ch, double t_ms ) = 0;
+    /* 指定されたチャンネル ch の現状パルス幅 (msec) を返す。 */
     virtual double get_pwm_width( int ch ) = 0;
-    virtual bool is_initialized() const = 0; /* init()がうまく行ってればtrue. */
+    /* デバイス等の初期化が完了していれば true。 */
+    virtual bool is_initialized() const = 0;
   protected:
     Pwmc(){ };
   };
