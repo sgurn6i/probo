@@ -552,7 +552,8 @@ class Ratl:
         返り値: probopy.EA1_OK, or probopy.ea1_status_enum。
         """
         assert(isinstance(md_rat_pwmservo, MdRatPwmservo))
-        rc = self._ctj.attach_pwmc(pwmc)
+        assert(isinstance(pwmc, probopy.Hwc))
+        rc = self._ctj.attach_hwc(pwmc)
         if rc == probopy.EA1_OK:
             for leg_key in md_rat_pwmservo:
                 self._pwmservos[leg_key] = {}
@@ -561,7 +562,7 @@ class Ratl:
                     dargs = MD_RAT_PWMSERVO1[leg_key][joint_key]
                     pwmservo = probopy.Pwmservo(dargs['ch'], dargs['svtype'])
                     self._pwmservos[leg_key][joint_key] = pwmservo
-                    rc = joint.attach_pwmservo(pwmservo)
+                    rc = joint.attach_hwj(pwmservo)
                     if rc != probopy.EA1_OK: return rc
         return rc
     def prepare_pca(self, device="/dev/i2c-1", i2c_addr=0x40, pwm_freq=60.0,
