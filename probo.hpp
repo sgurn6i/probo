@@ -11,19 +11,26 @@
 namespace probo
 {
   /* 前方宣言 */
-  class Joint; /* 関節ジョイント */
+  class Joint;
+  class JointBuilder;
   class Sensor; /* センサ予定 */
-  class Controller; /* コントローラー。シリアル通信他 */
-  class Hwc; /* アタッチされるハードウェアコントローラ。 */
+  class Controller;
+  class ControllerBuilder;
+  class Hwc;
+  class Hwj;
   /* 親玉本体 */
-  class Body : public pfamily::Parent
+  class Body : virtual public pfamily::Named, public pfamily::Parent
   {
   public:
     Body(const std::string& name = "Body");
     virtual ~Body();
+    /* Parent から継承。 */
+    virtual pfamily::Child * create_child(pfamily::ChildBuilder& builder,
+                                          const std::string& name = "bchild" );
     int do_em_in(double time); /* time(ms)の間に、targetまで進め */
     Controller * get_controller(int n);
-    virtual Controller * create_controller(const std::string& name = "ct");
+    virtual Controller * create_controller(ControllerBuilder& builder,
+                                           const std::string& name = "ct");
     int set_tick(double tick);
     double get_tick() const { return m_tick; }
     void reset_time();  /* 現在時刻をリセット。 */
@@ -34,18 +41,32 @@ namespace probo
     double m_time_prev;   /* 前回の時刻(ms) */
   };
 
+  class ControllerBuilder : public pfamily::ChildBuilder
+  {
+  public:
+    virtual ~ControllerBuilder(){ }
+    virtual pfamily::Child * create_child(pfamily::Parent& parent,
+                                 const std::string& name = "b_ct_child" );
+  };
+
+  /* コントローラー。シリアル通信他 */
   class Controller :
     public pfamily::Parent, 
     public pfamily::Child 
   {
-    friend Controller * Body::create_controller(const std::string& name);
+    //friend Controller * Body::create_controller(const std::string& name);
+    friend ControllerBuilder;
   public:
     virtual ~Controller(){ }
+    /* Parent から継承。 */
+    virtual pfamily::Child * create_child(pfamily::ChildBuilder& builder,
+                                          const std::string& name = "cchild" );
     virtual int go_target_at( double percent ); /* ターゲットのpercent % まで進め */
      /* previous position が現在位置になるようにアップデートせよ。 */
     virtual void update_pos();
     Body& get_body() const { return (Body&)get_parent(); }
-    virtual Joint * create_joint( const std::string& name = "j" );
+    virtual Joint * create_joint(JointBuilder& builder,
+                                 const std::string& name = "j" );
     /* pwm */
     int attach_hwc( Hwc& hwc ); /* init済のhwcをattachする。 */
     void detach_hwc(){ m_hwc = NULL; }
@@ -56,11 +77,20 @@ namespace probo
     Hwc * m_hwc;
   };
 
-  class Hwj;
+  class JointBuilder : public pfamily::ChildBuilder
+  {
+  public:
+    virtual ~JointBuilder(){ }
+    virtual pfamily::Child * create_child(pfamily::Parent& parent,
+                                 const std::string& name = "b_jt_child" );
+  };
+
+  /* 関節ジョイント */
   class Joint :
     public pfamily::Child
   {
-    friend Joint * Controller::create_joint( const std::string& name);
+    //friend Joint * Controller::create_joint( const std::string& name);
+    friend JointBuilder;
   public:
     virtual ~Joint(){}
     /* ターゲットposition設定。 */

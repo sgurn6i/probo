@@ -1,45 +1,43 @@
 /* pfamily.cpp    -*- C++ -*-
-   parent, children階層
-   2016-06-17 16:22:46 Sgurn6i
+   base, parent, children階層。child独立型。
+   2016-12-12 16:16:52 Sgurn6i
 */
 #include "pfamily.hpp"
+using pfamily::Named;
 using pfamily::Base;
 using pfamily::Child;
+using pfamily::ChildBuilder;
 using pfamily::Parent;
 using pfamily::TestBody;
 using pfamily::TestController;
+using pfamily::TestControllerBuilder;
 #include "ea1/ea1_debug.h"
 #include "ea1/ea1_benri.h"
 #define LOG_TAG "pfamily"
 
-Parent::Parent(const std::string& name)
-{
-  LOGD("Parent(%s)", name.c_str());
-  set_name(name);
-}
-
 Parent::Parent()
 {
-  LOGD("Parent(), no name");
+  LOGD("Parent()");
 }
 
 Parent::~Parent()
 {
-  LOGD("~Parent(%s)", get_name().c_str());
+  LOGD("~Parent()");
   /* delete children */
   while (! m_children.empty())
     {
-      Child * cp = m_children.front();
+      Child * cp = m_children.back();
       //remove_child(cp); /* 戸籍抹消 */
       EA1_SAFE_DELETE(cp); /* 子殺し。 */ 
     }
 }
 
-Child * Parent::create_child( const std::string& name )
+Child * Parent::create_child(ChildBuilder& builder,
+                             const std::string& name )
 {
-  Child * cp = new Child(*this, get_children_amt(), name);
+  Child * cp = builder.create_child(*this, name);
   if (cp == NULL) return NULL;
-  int rc = add(*cp);
+  int rc = add_child(*cp);
   if (rc != EA1_OK)
     {
       LOGE("%s: failed to add( %s )", __func__, name.c_str());
@@ -49,7 +47,7 @@ Child * Parent::create_child( const std::string& name )
   return cp;
 }
 
-int Parent::add(Child& c)
+int Parent::add_child(Child& c)
 {
   if (&c.get_parent() != this)
     {
@@ -90,19 +88,6 @@ int Parent::remove_child(Child * cp)
   return EA1_OK;
 }
 
-Child::Child(Parent& parent, int sn, const std::string& name)
-  : m_sn(parent.get_children_amt()), m_parent_p(&parent)
-{
-  LOGD("Child(%s) #%d", name.c_str(), m_sn);
-  set_name(name);
-}
-
-Child::~Child(){
-  LOGD("~Child %s #%d", m_name.c_str(), m_sn);
-    m_parent_p->remove_child(this);
-}
-
-/* sn 番目の子を返す。無ければNULL返す。 */
 Child * Parent::get_child(int sn)
 {
   if (sn >= (int)m_children.size())
@@ -120,36 +105,95 @@ bool Parent::has_child(Child * cp)
   return false;
 }
 
-TestController * TestBody::create_controller(const std::string& name)
+Child * ChildBuilder::create_child(Parent& parent,
+                                   const std::string& name)
 {
-  TestController * cp = new TestController(*this, get_children_amt(), name);
-  if (cp == NULL) return NULL;
-  int rc = add(*cp);
-  if (rc != EA1_OK)
+  Child * cp = new Child(parent, parent.get_children_amt(), name);
+  if (cp == NULL)
     {
-      LOGE("%s: failed to add()", __func__);
-      remove_child(cp);
+      LOGE("%s: failed to create Child( %s )", __func__, name.c_str());
       return NULL;
     }
   return cp;
 }
 
-Child * TestBody::create_child( const std::string& name )
+Child::Child(Parent& parent, int sn, const std::string& name)
+  : Named(name),
+    m_sn(parent.get_children_amt()),
+    m_parent_p(&parent)
 {
-  return create_controller(name);
+  LOGD("Child(%s) #%d", name.c_str(), m_sn);
+}
+
+Child::~Child()
+{
+  LOGD("~Child %s #%d", get_name().c_str(), m_sn);
+  if(m_parent_p)
+    m_parent_p->remove_child(this);
+}
+
+Child * TestBody::create_child(ChildBuilder& builder,
+                               const std::string& name)
+{
+  TestControllerBuilder * tcb
+    = dynamic_cast<TestControllerBuilder *>(&builder);
+  if (tcb == NULL)
+    {
+      LOGE("%s: unknown builder", __func__);
+      return NULL;
+    }
+  return Parent::create_child(builder, name);
+}
+TestController::TestController(TestBody& parent, int sn, const std::string& name )
+  : Parent(), Child(parent, sn, name)
+{ }
+
+Child * TestControllerBuilder::create_child(Parent& parent,
+                                       const std::string& name)
+{
+  TestBody * tbp = dynamic_cast<TestBody *>(&parent);
+  if (tbp == NULL)
+    {
+      LOGE("%s: unknown parent", __func__);
+      return NULL;
+    }
+  TestController * cp
+    = new TestController(*tbp, parent.get_children_amt(), name);
+  if (cp == NULL)
+    {
+      LOGE("%s: failed to create Child( %s )", __func__, name.c_str());
+      return NULL;
+    }
+  return cp;
 }
 
 int pfamily::test_main(int argc, char *argv[])
 {
+  TestControllerBuilder tcb;
+  //ChildBuilder cb;
   TestBody * fbd1 = new TestBody("family_body1");
-  TestBody * fbd2 = new TestBody("family_body2");
-  TestController * fct_a = fbd1->create_controller("fct1_a");
-  TestController * fct_b = fbd1->create_controller("fct1_b");
-  LOGI("Faily controller %s, parent %s",
-       fct_a->get_name().c_str(), fct_a->get_parent().get_name().c_str());
-  EA1_SAFE_DELETE(fct_b);
-  //delete fct_a;
+  TestController * fct_a
+    = dynamic_cast<TestController *>(fbd1->create_child(tcb, "fct_a"));
+  if (fct_a == NULL)
+    {
+      LOGE("%s: failed to create fct_a", __func__);
+      return EA1_FAIL;
+    }
+  TestController * fct_b
+    = dynamic_cast<TestController *>(fbd1->create_child(tcb, "fct_b"));
+  if (fct_b == NULL)
+    {
+      LOGE("%s: failed to create fct_b", __func__);
+      return EA1_FAIL;
+    }
+  
+  TestController * fct_c = fbd1->create_controller(tcb, "fct_c");
+  if (fct_c == NULL)
+    {
+      LOGE("%s: failed to create fct_c", __func__);
+      return EA1_FAIL;
+    }
+  
   EA1_SAFE_DELETE(fbd1);
-  EA1_SAFE_DELETE(fbd2);
-  return 0;
+  return EA1_OK;
 }

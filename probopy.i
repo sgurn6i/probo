@@ -18,100 +18,144 @@ namespace pfamily
   class Base
   {
   public:
-    virtual ~Base(){ }
-    virtual const std::string& get_name() const;
+    virtual ~Base();
   };
 
-  class Parent;
-  class Child;
-
-  class Child : virtual public Base
+  class Named
   {
-    friend class Parent;
+  public:
+    Named(const std::string& name = "");
+    virtual ~Named();
+    virtual const std::string& get_name() const;
+  };
+  
+  class Parent;
+  class ChildBuilder;
+  class Child : virtual public Base, virtual public Named
+  {
+    friend class ChildBuilder;
   public:
     int get_sn() const;
     Parent& get_parent() const;
-  protected:
-    Child(Parent& parent, int sn, const std::string& name);
     virtual ~Child();
+  protected:
+    Child(Parent& parent, int sn=-1, const std::string& name="_child");
+  };
+
+  /* child を作って渡すBuilderクラス */
+  class ChildBuilder
+  {
+  public:
+    virtual ~ChildBuilder();
+    virtual Child * create_child(Parent& parent,
+                                 const std::string& name = "b_child" );
   };
 
   class Parent : virtual public Base
   {
     friend Child::~Child();
   public:
-    Parent(const std::string& name = "parent");
+    Parent();
     virtual ~Parent();
-    virtual Child * create_child( const std::string& name = "p child" );
-    int get_children_amt();
+    virtual Child * create_child(ChildBuilder& builder,
+                                 const std::string& name = "p_child" );
+    int get_children_amt() const;
     Child * get_child(int sn);
     bool has_child(Child * cp);
+  protected:
+    virtual int add_child(Child& c);
+    int remove_child(Child * cp);
   };
-} /* namespace pfamily */
+}
 
 namespace probo
 {
   /* probo.hpp */
   class Joint;
-  class Sensor;
+  class JointBuilder;
   class Controller;
+  class ControllerBuilder;
   class Hwc;
   class Hwj;
 
-  class Body : public pfamily::Parent
+  class Body : virtual public pfamily::Named, public pfamily::Parent
   {
   public:
     Body(const std::string& name = "Body");
     virtual ~Body();
+    virtual pfamily::Child * create_child(pfamily::ChildBuilder& builder,
+                                          const std::string& name = "bchild" );
     int do_em_in(double time);
     Controller * get_controller(int n);
-    virtual Controller * create_controller(const std::string& name = "ct");
+    virtual Controller * create_controller(ControllerBuilder& builder,
+                                           const std::string& name = "ct");
     int set_tick(double tick);
     double get_tick() const;
     void reset_time();
+  };
+
+  class ControllerBuilder : public pfamily::ChildBuilder
+  {
+  public:
+    virtual ~ControllerBuilder();
+    virtual pfamily::Child * create_child(pfamily::Parent& parent,
+                                 const std::string& name = "b_ct_child" );
   };
 
   class Controller :
     public pfamily::Parent, 
     public pfamily::Child 
   {
-    friend Controller * Body::create_controller(const std::string& name);
+    friend ControllerBuilder;
   public:
-    virtual ~Controller(){ }
+    virtual ~Controller();
+    virtual pfamily::Child * create_child(pfamily::ChildBuilder& builder,
+                                          const std::string& name = "cchild" );
     virtual int go_target_at( double percent );
     virtual void update_pos();
     Body& get_body() const;
-    virtual Joint * create_joint( const std::string& name = "j" );
-    /* pwm */
+    virtual Joint * create_joint(JointBuilder& builder,
+                                 const std::string& name = "j" );
     int attach_hwc( Hwc& hwc );
     void detach_hwc();
     Hwc * get_hwc() const;
   protected:
     Controller( Body& body, int sn, const std::string& name );
+  private:
+    Hwc * m_hwc;
   };
 
+  class JointBuilder : public pfamily::ChildBuilder
+  {
+  public:
+    virtual ~JointBuilder();
+    virtual pfamily::Child * create_child(pfamily::Parent& parent,
+                                 const std::string& name = "b_jt_child" );
+  };
+
+  /* 関節ジョイント */
   class Joint :
     public pfamily::Child
   {
-    friend Joint * Controller::create_joint( const std::string& name);
+    friend JointBuilder;
   public:
-    virtual ~Joint(){}
+    virtual ~Joint();
     int target(double pos);
     double get_curr_pos() const;
     virtual int go_target_at(double percent);
     virtual void update_pos();
-    /* PWM servo関係 */
     int attach_hwj( Hwj& hwj );
     void detach_hwj();
     Hwj * get_hwj() const;
   protected:
     Joint(Controller& controller, int sn, const std::string& name);
+    Hwc * get_hwc();
   };
 
   class Hwc : public pfamily::Base
   {
   public:
-    virtual ~Hwc(){ };
+    virtual ~Hwc();
     virtual int get_ch_amt() const = 0;
     virtual bool is_initialized() const = 0;
     virtual bool is_acceptable(Hwj * hwj) = 0;
@@ -120,7 +164,7 @@ namespace probo
   class Hwj : public pfamily::Base
   {
   public:
-    virtual ~Hwj(){ };
+    virtual ~Hwj();
     virtual bool is_initialized() const = 0;
     virtual int get_ch() const = 0;
     virtual int set_curr_deg( double deg, Hwc * hwc) = 0;
@@ -131,7 +175,7 @@ namespace probo
   class Pwmc : public Hwc
   {
   public:
-    virtual ~Pwmc(){ };
+    virtual ~Pwmc();
     virtual int get_ch_amt() const = 0;
     virtual bool is_initialized() const = 0;
     virtual bool is_acceptable(Hwj * hwj) = 0;

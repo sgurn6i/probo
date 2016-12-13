@@ -334,12 +334,13 @@ class Leg:
         self._name = name
         self._mjs = {}
         self._ctj = ctj
+        self._jtb = probopy.JointBuilder()
         # Todo: mj_dict item数チェック
         for key in md_leg_joint:
             md = md_leg_joint[key]
             if isinstance(md, MdJoint):
                 jt_name = "%s_jt_%s" % (name, key)
-                jt = self._ctj.create_joint(jt_name)
+                jt = self._ctj.create_joint(self._jtb, jt_name)
                 self._mjs[key] = Magj(joint=jt, **md)
     def __str__(self):
         names = ""
@@ -521,7 +522,8 @@ class Ratl:
         assert(isinstance(md_rat_joint, MdRatJoint))
         self._name = name
         self._body = probopy.Body(name)
-        self._ctj = self._body.create_controller(name + "_ctj")
+        self._cb = probopy.ControllerBuilder();
+        self._ctj = self._body.create_controller(self._cb, name + "_ctj")
         self._pwmservos = {} # GC阻止の為にpwmservo貯めとく
         self._legs = {}
         assert(isinstance(md_rat_joint, MdRatJoint))

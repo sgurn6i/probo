@@ -18,36 +18,45 @@
 using probo::Body;
 using probo::Controller;
 using probo::Joint;
+using probo::ControllerBuilder;
+using probo::JointBuilder;
 
 /* a と b が delta > 0 的に近い。 */
 #define NEAR_POS(a,b,delta) \
   ((((a) - (b)) < (delta)) && (((b) - (a)) < (delta)))
 
 Body::Body(const std::string& name) :
-  pfamily::Parent::Parent(name)
+  pfamily::Named::Named(name),
+  pfamily::Parent::Parent()
 {
   reset_time();
 }
 Body::~Body()
 {
 }
+
+pfamily::Child * Body::create_child(pfamily::ChildBuilder& builder,
+                                    const std::string& name)
+{
+  ControllerBuilder * tcb
+    = dynamic_cast<ControllerBuilder *>(&builder);
+  if (tcb == NULL)
+    {
+      LOGE("%s: unknown builder", __func__);
+      return NULL;
+    }
+  return pfamily::Parent::create_child(builder, name);
+}
+
 Controller * Body::get_controller(int n)
 {
   return dynamic_cast<Controller *>(get_child(n));
 }
 
-Controller * Body::create_controller(const std::string& name)
+Controller * Body::create_controller(ControllerBuilder& builder,
+                                     const std::string& name)
 {
-  Controller * cp = new Controller(*this, get_children_amt(), name);
-  if (cp == NULL) return NULL;
-  int rc = add(*cp);
-  if (rc != EA1_OK)
-    {
-      LOGE("%s: failed to add()", __func__);
-      remove_child(cp);
-      return NULL;
-    }
-  return cp;
+  return dynamic_cast<Controller *>(create_child(builder, name));
 }
 
 int Body::set_tick(double tick)
@@ -137,12 +146,43 @@ int Body::make_update_pos()
   return EA1_OK;
 }
 
+pfamily::Child * ControllerBuilder::create_child(pfamily::Parent& parent,
+                                                 const std::string& name)
+{
+  Body * bp = dynamic_cast<Body *>(&parent);
+  if (bp == NULL)
+    {
+      LOGE("%s: unknown parent", __func__);
+      return NULL;
+    }
+  Controller * cp = new Controller(*bp, parent.get_children_amt(), name);
+  if (cp == NULL)
+    {
+      LOGE("%s: failed to create Controller( %s )", __func__, name.c_str());
+      return NULL;
+    }
+  return cp;
+}
+
+
 Controller::Controller(Body& body, int sn, const std::string& name) :
-  pfamily::Parent::Parent( name ),
+  pfamily::Parent::Parent(),
   pfamily::Child::Child( body, sn, name ),
   m_hwc( NULL )
 { }
 
+pfamily::Child * Controller::create_child(pfamily::ChildBuilder& builder,
+                                          const std::string& name)
+{
+  JointBuilder * jb
+    = dynamic_cast<JointBuilder *>(&builder);
+  if (jb == NULL)
+    {
+      LOGE("%s: unknown builder", __func__);
+      return NULL;
+    }
+  return pfamily::Parent::create_child(builder, name);
+}
 
 int Controller::go_target_at(double percent)
 {
@@ -183,18 +223,10 @@ void Controller::update_pos()
     }
 }
 
-Joint * Controller::create_joint(const std::string& name)
+Joint * Controller::create_joint(JointBuilder& builder,
+                                 const std::string& name)
 {
-  Joint * jp = new Joint(*this, get_children_amt(), name);
-  if (jp == NULL) return NULL;
-  int rc = add(*jp);
-  if (rc != EA1_OK)
-    {
-      LOGE("%s: failed to add()", __func__);
-      remove_child(jp);
-      return NULL;
-    }
-  return jp;
+  return dynamic_cast<Joint *>(create_child(builder, name));
 }
 
 int Controller::attach_hwc( probo::Hwc& hwc )
@@ -207,6 +239,25 @@ int Controller::attach_hwc( probo::Hwc& hwc )
     }
   m_hwc = &hwc;
   return rc;
+}
+
+pfamily::Child * JointBuilder::create_child(pfamily::Parent& parent,
+                                            const std::string& name)
+{
+  Controller * cp = dynamic_cast<Controller *>(&parent);
+  if (cp == NULL)
+    {
+      LOGE("%s: unknown parent", __func__);
+      return NULL;
+    }
+  Joint * jp
+    = new Joint(*cp, parent.get_children_amt(), name);
+  if (jp == NULL)
+    {
+      LOGE("%s: failed to create Joint( %s )", __func__, name.c_str());
+      return NULL;
+    }
+  return jp;
 }
 
 int Joint::go_target_at(double percent)
@@ -288,12 +339,14 @@ int probo::test_main(int argc, char *argv[])
   //LOGI("");
   LOGI("starts");
   Body * body1 = new Body();
+  ControllerBuilder cb;
+  JointBuilder jb;
   const char * name1 = "ct1";
-  Controller * ct1 = body1->create_controller(name1);
-  Controller * ct2 = body1->create_controller("ct2");
-  Joint * j11 = ct1->create_joint("j11");
-  Joint * j12 = ct1->create_joint("j12");
-  Joint * j21 = ct2->create_joint("j21_has_a_long_name_like_this");
+  Controller * ct1 = body1->create_controller(cb, name1);
+  Controller * ct2 = body1->create_controller(cb, "ct2");
+  Joint * j11 = ct1->create_joint(jb, "j11");
+  Joint * j12 = ct1->create_joint(jb, "j12");
+  Joint * j21 = ct2->create_joint(jb, "j21_has_a_long_name_like_this");
   /* pwm */
   probo::Pca9685 * pca9685 = new probo::Pca9685();
   pca9685->init( "/dev/i2c-2", 0x40, 100.0 );
