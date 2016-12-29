@@ -18,8 +18,10 @@
 using probo::Body;
 using probo::Controller;
 using probo::Joint;
+using probo::Sensor;
 using probo::ControllerBuilder;
 using probo::JointBuilder;
+using probo::SensorBuilder;
 
 /* a と b が delta > 0 的に近い。 */
 #define NEAR_POS(a,b,delta) \
@@ -38,9 +40,12 @@ Body::~Body()
 pfamily::Child * Body::create_child(pfamily::ChildBuilder& builder,
                                     const std::string& name)
 {
-  ControllerBuilder * tcb
-    = dynamic_cast<ControllerBuilder *>(&builder);
-  if (tcb == NULL)
+  /* dynamic casted builder  */
+  pfamily::ChildBuilder * dc_b; 
+  dc_b = dynamic_cast<ControllerBuilder *>(&builder);
+  if (dc_b == NULL)
+    dc_b = dynamic_cast<SensorBuilder *>(&builder);
+  if (dc_b == NULL)
     {
       LOGE("%s: unknown builder", __func__);
       return NULL;
@@ -330,6 +335,21 @@ int Joint::attach_hwj( probo::Hwj& hwj )
     }
   m_hwj = &hwj;
   return rc;
+}
+
+Body * SensorBuilder::get_body(pfamily::Parent& parent)
+{
+  Body * b = dynamic_cast<Body *>(&parent);
+  if (b == NULL)
+    {
+      LOGE("%s: unknown parent", __func__);
+    }
+  return b;
+}
+
+Sensor::Sensor(Body& body, int sn, const std::string& name)
+  : pfamily::Child::Child( body, sn, name)
+{
 }
 
 int probo::test_main(int argc, char *argv[])

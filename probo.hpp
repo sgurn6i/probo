@@ -45,8 +45,9 @@ namespace probo
   {
   public:
     virtual ~ControllerBuilder(){ }
+    /* parent は Body であることを期待する。 */
     virtual pfamily::Child * create_child(pfamily::Parent& parent,
-                                 const std::string& name = "b_ct_child" );
+                                          const std::string& name = "b_ct_child" );
   };
 
   /* コントローラー。シリアル通信他 */
@@ -81,6 +82,7 @@ namespace probo
   {
   public:
     virtual ~JointBuilder(){ }
+    /* parent は Controller であることを期待する。 */
     virtual pfamily::Child * create_child(pfamily::Parent& parent,
                                  const std::string& name = "b_jt_child" );
   };
@@ -115,6 +117,44 @@ namespace probo
     double m_prev_pos = -100.0;  // 過去位置、動作開始時の位置。
     double m_curr_pos = 0.0;  // 現在位置
     Hwj * m_hwj;
+  };
+
+  class SensorBuilder : public pfamily::ChildBuilder
+  {
+  public:
+    virtual ~SensorBuilder(){ }
+    /* parent は Body であることを期待する。 */
+    virtual pfamily::Child * create_child(pfamily::Parent& parent,
+                                          const std::string& name = "b_ss_child" ) = 0;
+  protected:
+    Body * get_body(pfamily::Parent& parent);
+  };
+  
+  /* abstract センサー。gyro-accel等。 */
+  class Sensor :
+    public pfamily::Child 
+  {
+    friend SensorBuilder;
+  public:
+    virtual ~Sensor(){ }
+    /* sense 実行。定期的に呼ばれるを期待する。
+     * 内部積分値、微分値更新もこの時に行なう。
+     * parameter:
+     *   time: 実行時刻 (msec)。
+     * returns:
+     *   ea1_status_enum 値。
+     */
+    virtual int sense( double time ) = 0;
+    /* センサ微積分値リセット。
+     * parameter:
+     *   time: 実行時刻 (msec)。
+     * returns:
+     *   ea1_status_enum 値。
+     */
+    virtual int reset_sense( double time ) = 0;
+    Body& get_body() const { return (Body&)get_parent(); }
+  protected:
+    Sensor( Body& body, int sn, const std::string& name );
   };
 
   /* ハードウェアAbstractクラス。 */

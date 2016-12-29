@@ -79,3 +79,7 @@ build*/
 
 ## 2016-11-19 16:18:41 python
 *.pyc
+
+## 2016-12-14 16:02:31 obsolete
+obsolete/
+old/

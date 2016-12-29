@@ -76,6 +76,8 @@ namespace pfamily
     /* ChildBuilderに子を作らせて登録する。 */
     virtual Child * create_child(ChildBuilder& builder,
                                  const std::string& name = "p_child" );
+    /* 登録された子であったら、それを delete する。 */
+    int delete_child(Child * cp);
     /* 登録された子の数。 */
     int get_children_amt() const { return (int)m_children.size(); } 
     /* sn 番目の子を返す。無ければNULL返す。 */

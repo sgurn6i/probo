@@ -46,6 +46,16 @@ Child * Parent::create_child(ChildBuilder& builder,
     }
   return cp;
 }
+int Parent::delete_child(Child * cp)
+{
+  if (has_child(cp))
+    {
+      delete cp;
+    }
+  else
+    return EA1_EINVAL;
+  return EA1_OK;
+}
 
 int Parent::add_child(Child& c)
 {
@@ -191,6 +201,12 @@ int pfamily::test_main(int argc, char *argv[])
   if (fct_c == NULL)
     {
       LOGE("%s: failed to create fct_c", __func__);
+      return EA1_FAIL;
+    }
+  int rc = fbd1->delete_child(fct_b);
+  if (rc != EA1_OK)
+    {
+      LOGE("%s: failed to fbd1->delete_child(fct_b)", __func__);
       return EA1_FAIL;
     }
   
