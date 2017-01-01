@@ -43,14 +43,7 @@
       }                                         \
   } while(0)
 
-/* ructors */
-probo::Pca9685::Pca9685() :
-  m_initialized( false ),
-  m_device( "" ),
-  m_i2c_addr( -1 ),
-  m_fd( -1 ),
-  m_prescale( 0x65 ),
-  m_osc_freq( PCA9685_OSC_FREQ )
+void probo::Pca9685::init_m_pwm_widths()
 {
   for (int ix = 0; ix < m_ch_amt; ix ++)
     {
@@ -58,11 +51,26 @@ probo::Pca9685::Pca9685() :
     }
 }
 
+/* ructors */
+probo::Pca9685::Pca9685() :
+  m_osc_freq( PCA9685_OSC_FREQ )
+{
+  init_m_pwm_widths();
+}
+
+probo::Pca9685::Pca9685(const std::string& device, int i2c_addr, double pwm_freq)
+  : m_osc_freq( PCA9685_OSC_FREQ )
+{
+  init_m_pwm_widths();
+  init(device, i2c_addr, pwm_freq);
+}
+
 probo::Pca9685::~Pca9685()
 {
   LOGD("~Pca9685(%s)", get_device().c_str());
   SAFE_CLOSE_FILE( m_fd );
 }
+
 
 void probo::Pca9685::write8( uint8_t addr, uint8_t data )
 {
