@@ -10,7 +10,6 @@
 #include "ea1/ea1_debug.h"
 #include "ea1/ea1_benri.h"
 #include "ea1/ea1_time.h"
-#include "pfamily.hpp"
 #include "probopwm.hpp"
 #include "ppca9685.hpp"
 #include "probo.hpp"
@@ -19,56 +18,38 @@ using probo::Body;
 using probo::Controller;
 using probo::Joint;
 using probo::Sensor;
-using probo::ControllerBuilder;
-using probo::JointBuilder;
-using probo::SensorBuilder;
 
 /* a と b が delta > 0 的に近い。 */
 #define NEAR_POS(a,b,delta) \
   ((((a) - (b)) < (delta)) && (((b) - (a)) < (delta)))
 
 Body::Body(const std::string& name) :
-  pfamily::Named::Named(name),
-  pfamily::Parent::Parent()
+  ea1::Composite(name)
 {
   reset_time();
 }
+
 Body::~Body()
 {
 }
 
-pfamily::Child * Body::create_child(pfamily::ChildBuilder& builder,
-                                    const std::string& name)
+int Body::add_child(ea1::Component* c)
 {
-  /* dynamic casted builder  */
-  pfamily::ChildBuilder * dc_b; 
-  dc_b = dynamic_cast<ControllerBuilder *>(&builder);
-  if (dc_b == NULL)
-    dc_b = dynamic_cast<SensorBuilder *>(&builder);
-  if (dc_b == NULL)
+  auto ct = dynamic_cast<Controller *>(c);
+  auto ss = dynamic_cast<Sensor *>(c);
+  if ((ct == NULL) && (ss == NULL))
     {
-      LOGE("%s: unknown builder", __func__);
-      return NULL;
+      LOGE("%s %s: unknown child", get_name().c_str(), __func__);
+      return EA1_EINVAL;
     }
-  return pfamily::Parent::create_child(builder, name);
-}
-
-Controller * Body::get_controller(int n)
-{
-  return dynamic_cast<Controller *>(get_child(n));
-}
-
-Controller * Body::create_controller(ControllerBuilder& builder,
-                                     const std::string& name)
-{
-  return dynamic_cast<Controller *>(create_child(builder, name));
+  return ea1::Composite::add_child(c);
 }
 
 int Body::set_tick(double tick)
 {
   if (tick <= 1.0)
     {
-      LOGE("%s: invalid tick %f", __func__, tick);
+      LOGE("%s %s: invalid tick %f", get_name().c_str(), __func__, tick);
       return EA1_EINVAL;
     }
   m_tick = tick;
@@ -78,6 +59,23 @@ int Body::set_tick(double tick)
 void Body::reset_time()
 {
   m_time_prev = ea1_gettimeofday_ms();
+}
+
+int Body::reset_sense()
+{
+  int rc = EA1_OK;
+  int amt = get_children_amt();
+  for (int ix = 0; ix < amt; ix ++)
+    {
+      auto sensor = dynamic_cast<Sensor *>(get_child(ix));
+      if (sensor != NULL)
+        {
+          int sensor_rc = sensor->reset_sense(ea1_gettimeofday_ms());
+          if (sensor_rc < rc)
+            rc = sensor_rc;
+        }
+    }
+  return rc;
 }
 
 int Body::do_em_in(double time)
@@ -109,8 +107,8 @@ int Body::do_em_in(double time)
       if (rc < 0)
         goto RET;
       double time_sleep = time_lap - ea1_gettimeofday_ms();
-      LOGD("%s: t %f, dt %f, sleep %f, %f %%",
-           __func__, time_lap, time_lap - m_time_prev,
+      LOGD("%s %s: t %f, dt %f, sleep %f, %f %%",
+           get_name().c_str(), __func__, time_lap, time_lap - m_time_prev,
            time_sleep, lap_percent);
       if (time_sleep > 0)   // 2016-10-12 15:30:36 added
         ea1_sleep_ms(time_sleep); 
@@ -122,6 +120,13 @@ int Body::do_em_in(double time)
   return rc;
 }
 
+int Body::set_parent(ea1::Composite& cs)
+{
+  /* Bodyの親は無い。 */
+  LOGE("%s %s: unknown parent", get_name().c_str(), __func__);
+  return EA1_EINVAL;
+}
+
 int Body::make_go_target_at(double percent)
 {
   if (percent < 0.0) percent = 0.0;
@@ -129,10 +134,15 @@ int Body::make_go_target_at(double percent)
   int amt = get_children_amt();
   for (int ix = 0; ix < amt; ix ++)
     {
-      Controller * ctlr = dynamic_cast<Controller *>(get_child(ix));
+      auto ctlr = dynamic_cast<Controller *>(get_child(ix));
+      auto sensor = dynamic_cast<Sensor *>(get_child(ix));
       if (ctlr != NULL)
         {
           ctlr->go_target_at(percent);
+        }
+      else if (sensor != NULL)
+        {
+          sensor->sense(ea1_gettimeofday_ms());
         }
     }
   return EA1_OK;
@@ -151,42 +161,18 @@ int Body::make_update_pos()
   return EA1_OK;
 }
 
-pfamily::Child * ControllerBuilder::create_child(pfamily::Parent& parent,
-                                                 const std::string& name)
-{
-  Body * bp = dynamic_cast<Body *>(&parent);
-  if (bp == NULL)
-    {
-      LOGE("%s: unknown parent", __func__);
-      return NULL;
-    }
-  Controller * cp = new Controller(*bp, parent.get_children_amt(), name);
-  if (cp == NULL)
-    {
-      LOGE("%s: failed to create Controller( %s )", __func__, name.c_str());
-      return NULL;
-    }
-  return cp;
-}
-
-
-Controller::Controller(Body& body, int sn, const std::string& name) :
-  pfamily::Parent::Parent(),
-  pfamily::Child::Child( body, sn, name ),
-  m_hwc( NULL )
+Controller::Controller(const std::string& name)
+  : ea1::Composite(name)
 { }
-
-pfamily::Child * Controller::create_child(pfamily::ChildBuilder& builder,
-                                          const std::string& name)
+int Controller::add_child(ea1::Component* c)
 {
-  JointBuilder * jb
-    = dynamic_cast<JointBuilder *>(&builder);
-  if (jb == NULL)
+  auto jt = dynamic_cast<Joint *>(c);
+  if (jt == NULL)
     {
-      LOGE("%s: unknown builder", __func__);
-      return NULL;
+      LOGE("%s %s: unknown child", get_name().c_str(), __func__);
+      return EA1_EINVAL;
     }
-  return pfamily::Parent::create_child(builder, name);
+  return ea1::Composite::add_child(c);
 }
 
 int Controller::go_target_at(double percent)
@@ -212,7 +198,6 @@ int Controller::go_target_at(double percent)
     }
   return rc;
 }
-
   
 void Controller::update_pos()
 {
@@ -228,42 +213,47 @@ void Controller::update_pos()
     }
 }
 
-Joint * Controller::create_joint(JointBuilder& builder,
-                                 const std::string& name)
-{
-  return dynamic_cast<Joint *>(create_child(builder, name));
-}
 
 int Controller::attach_hwc( probo::Hwc& hwc )
 {
   int rc = EA1_OK;
   if (! hwc.is_initialized())
     {
-      LOGE("%s: hwc is not initialized", __func__);
+      LOGE("%s %s: hwc is not initialized", get_name().c_str(), __func__);
       return EA1_E_NOT_READY;
     }
+  detach_hwc(); /* jointの旧Hwjをdetachする。 */
   m_hwc = &hwc;
   return rc;
 }
 
-pfamily::Child * JointBuilder::create_child(pfamily::Parent& parent,
-                                            const std::string& name)
+int Controller::set_parent(ea1::Composite& cs)
 {
-  Controller * cp = dynamic_cast<Controller *>(&parent);
-  if (cp == NULL)
+  Body * body = dynamic_cast<Body *>( &cs );
+  if (body == NULL)
     {
-      LOGE("%s: unknown parent", __func__);
-      return NULL;
+      LOGE("%s %s: unknown parent", get_name().c_str(), __func__);
+      return EA1_EINVAL;
     }
-  Joint * jp
-    = new Joint(*cp, parent.get_children_amt(), name);
-  if (jp == NULL)
-    {
-      LOGE("%s: failed to create Joint( %s )", __func__, name.c_str());
-      return NULL;
-    }
-  return jp;
+  return ea1::Composite::set_parent(cs);
 }
+
+/* hwc無ければhwj無い。 */
+void Controller::detach_hwc()
+{
+  int amt = get_children_amt();
+  for (int ix = 0; ix < amt; ix ++)
+    {
+      Joint * joint = dynamic_cast<Joint *>(get_child(ix));
+      if (joint != NULL)
+        joint->detach_hwj();
+    }
+  m_hwc = NULL;
+}
+
+Joint::Joint(const std::string& name)
+  : ea1::Leaf(name)
+{ }
 
 int Joint::go_target_at(double percent)
 {
@@ -300,13 +290,26 @@ int Joint::target(double pos)
 {
   m_target_pos = pos;
   /* todo: check ターゲット範囲。 */
-  LOGD("%s: pos curr %f, target %f", get_name().c_str(), m_curr_pos, m_target_pos);  
+  LOGD("%s %s: pos curr %f, target %f",
+       get_name().c_str(), __func__, m_curr_pos, m_target_pos);  
   return EA1_OK;
+}
+
+double Joint::get_curr_hw_pos() const
+{
+  if (m_hwj != NULL)
+    {
+      return m_hwj->get_curr_deg();
+    }
+  else
+    {
+      return m_curr_pos;
+    }
 }
 
 probo::Hwc * Joint::get_hwc()
 {
-  Controller * controller = dynamic_cast<Controller *>( &get_parent() );
+  Controller * controller = dynamic_cast<Controller *>( get_parent() );
   Hwc * hwc = NULL;
   if (controller != NULL)
     hwc = controller->get_hwc();
@@ -332,26 +335,47 @@ int Joint::attach_hwj( probo::Hwj& hwj )
     {
       LOGE("%s %s: hwj ch %d out of range 0 .. %d",
            get_name().c_str(), __func__, hwj.get_ch(), hwc->get_ch_amt() - 1);
+      return EA1_E_RANGE;
     }
   m_hwj = &hwj;
   return rc;
 }
 
-Body * SensorBuilder::get_body(pfamily::Parent& parent)
+int Joint::set_parent(ea1::Composite& cs)
 {
-  Body * b = dynamic_cast<Body *>(&parent);
-  if (b == NULL)
+  Controller * controller = dynamic_cast<Controller *>( &cs );
+  if (controller == NULL)
     {
-      LOGE("%s: unknown parent", __func__);
+      LOGE("%s %s: unknown parent", get_name().c_str(), __func__);
+      return EA1_EINVAL;
     }
-  return b;
+  return ea1::Leaf::set_parent(cs);
 }
 
-Sensor::Sensor(Body& body, int sn, const std::string& name)
-  : pfamily::Child::Child( body, sn, name)
+Sensor::Sensor(const std::string& name)
+  : ea1::Leaf(name)
+{ }
+
+int Sensor::set_parent(ea1::Composite& cs)
 {
+  Body * body = dynamic_cast<Body *>( &cs );
+  if (body == NULL)
+    {
+      LOGE("%s %s: unknown parent", get_name().c_str(), __func__);
+      return EA1_EINVAL;
+    }
+  return ea1::Leaf::set_parent(cs);
 }
 
+probo::Hwc::Hwc(const std::string& name)
+  : ea1::Named(name)
+{ }
+
+probo::Hwj::Hwj(const std::string& name)
+  : ea1::Named(name)
+{ }
+
+#if 0
 int probo::test_main(int argc, char *argv[])
 {
   /* test pfamily */
@@ -394,3 +418,4 @@ int probo::test_main(int argc, char *argv[])
   EA1_SAFE_DELETE( pca9685 );
   return 0;
 }
+#endif

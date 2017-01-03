@@ -31,8 +31,8 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif(NOT CMAKE_BUILD_TYPE)
 set(PROJECT_NAME probo)
-set(PROBO_SRCS pfamily.cpp probo.cpp probopwm.cpp ppca9685.cpp
-  pgyro.cpp pmpu6050.cpp)
+set(PROBO_SRCS probo.cpp probopwm.cpp ppca9685.cpp pgyro.cpp pmpu6050.cpp)
+#set(PROBO_SRCS probo.cpp probopwm.cpp ppca9685.cpp pgyro.cpp)
 set (MPU_DIR MPU6050-Pi)
 set (MPU_SRCS ${MPU_DIR}/I2Cdev.cpp ${MPU_DIR}/MPU6050.cpp)
 # SWIG python
@@ -52,3 +52,8 @@ add_custom_command(
   TARGET probopy POST_BUILD
   COMMAND touch __init__.py
   )
+# Testing
+if(NOT NO_TEST)
+  enable_testing()
+  add_subdirectory(test)
+endif()

@@ -36,22 +36,10 @@ public:
   KDL::Rotation rot_0;
 };
 
-pfamily::Child * probo::Pmpu6050Builder::create_child(pfamily::Parent& parent,
-                                                      const std::string& name)
-{
-  Body * b = get_body(parent);
-  if (b)
-    return new probo::Pmpu6050(*b, parent.get_children_amt(), name);
-  else
-    return NULL;
-}
-
-
-probo::Pmpu6050::Pmpu6050(Body& body, int sn, const std::string& name)
-  : probo::Gyro(body, sn, name),
+probo::Pmpu6050::Pmpu6050(const std::string& name)
+  : probo::Gyro(name),
     impl(new Impl())
-{
-}
+{ }
 
 probo::Pmpu6050::~Pmpu6050(){ }
 

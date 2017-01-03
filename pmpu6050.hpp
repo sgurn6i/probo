@@ -9,18 +9,10 @@
 
 namespace probo
 {
-  class Pmpu6050Builder : public GyroBuilder
-  {
-  public:
-    virtual ~Pmpu6050Builder(){ }
-    virtual pfamily::Child * create_child(pfamily::Parent& parent,
-                                          const std::string& name = "b_pmpu_child" );
-  };
-
   class Pmpu6050 : public Gyro
   {
-    friend Pmpu6050Builder;
   public:
+    Pmpu6050(const std::string& name ="Pmpu6050");
     virtual ~Pmpu6050();
     int init( const std::string& device = "/dev/i2c-2", int i2c_addr = 0x68 );
     /* Sensor継承 */
@@ -37,8 +29,6 @@ namespace probo
                               double * out_z,
                               double * out_w);
     bool is_dmp_ready() const;
-  protected:
-    Pmpu6050(Body& body, int sn, const std::string& name);
   private:
     class Impl; // hidden implementations
     std::unique_ptr<Impl> impl; 

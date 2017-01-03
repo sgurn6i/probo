@@ -9,19 +9,11 @@
 
 namespace probo
 {
-  class GyroBuilder : public SensorBuilder
-  {
-  public:
-    virtual ~GyroBuilder(){ }
-    virtual pfamily::Child * create_child(pfamily::Parent& parent,
-                                          const std::string& name = "b_gyro_child" );
-  };
-
   /* Gyroセンサひな形。 ゼロ回転しか返さないダミーGyroが実装される。  */
   class Gyro : public Sensor
   {
-    friend GyroBuilder;
   public:
+    Gyro(const std::string& name ="Gyro");
     virtual ~Gyro(){ }
     /* Sensor継承。 */
     virtual int sense( double time );
@@ -43,9 +35,6 @@ namespace probo
                               double * out_y,
                               double * out_z,
                               double * out_w);
-    
-  protected:
-    Gyro( Body& body, int sn, const std::string& name );
   };
 
 } /* namespace probo */
