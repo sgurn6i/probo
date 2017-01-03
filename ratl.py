@@ -334,13 +334,13 @@ class Leg:
         self._name = name
         self._mjs = {}
         self._ctj = ctj
-        self._jtb = probopy.JointBuilder()
         # Todo: mj_dict item数チェック
         for key in md_leg_joint:
             md = md_leg_joint[key]
             if isinstance(md, MdJoint):
                 jt_name = "%s_jt_%s" % (name, key)
-                jt = self._ctj.create_joint(self._jtb, jt_name)
+                jt = probopy.Joint(jt_name)
+                self._ctj.add_child(jt)
                 self._mjs[key] = Magj(joint=jt, **md)
     def __str__(self):
         names = ""
@@ -522,8 +522,9 @@ class Ratl:
         assert(isinstance(md_rat_joint, MdRatJoint))
         self._name = name
         self._body = probopy.Body(name)
-        self._cb = probopy.ControllerBuilder();
-        self._ctj = self._body.create_controller(self._cb, name + "_ctj")
+        self._ctj = probopy.Controller(name + "_ctj")
+        self._body.add_child(self._ctj)
+        self._gyro = None
         self._pwmservos = {} # GC阻止の為にpwmservo貯めとく
         self._legs = {}
         assert(isinstance(md_rat_joint, MdRatJoint))
@@ -584,6 +585,20 @@ class Ratl:
         rc = self._pca1.init(device, i2c_addr, pwm_freq)
         if rc == probopy.EA1_OK:
             rc = self.set_pwm(self._pca1, md_rat_pwmservo)
+        return rc
+    def prepare_mpu6050(self, device="/dev/i2c-1", i2c_addr=0x68):
+        u""" prepare MPU6050 Gyro 
+        connect to i2c device,
+        Arguments:
+          device:   i2c device name string
+          i2c_addr: i2c address of the device.
+        returns:
+            probopy.EA1_OK, or probopy.ea1_status_enum。
+        """
+        gyro = probopy.Pmpu6050(self._name + "_mpu6050")
+        rc = gyro.init(device, i2c_addr)
+        if rc == probopy.EA1_OK:
+            self._gyro = gyro
         return rc
     def set_kdl_segs(self, md_rat_seg=MD_RAT_SEG1):
         u""" set KDL segments.
