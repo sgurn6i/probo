@@ -13,13 +13,13 @@ stroke_amt = 8 # 一周期のストローク数
 dt1 = 80  # 遷移時間(ms)
 # step width constants(mm)
 STZ = 20
-STX = 10
-STY = 5
-STY0 = 0
-STY1 = STY * 1
-STY2 = STY * 2
-STY3 = STY * 3
-STY4 = STY * 4
+STY = 10
+STX = 5
+STX0 = 0
+STX1 = STX * 1
+STX2 = STX * 2
+STX3 = STX * 3
+STX4 = STX * 4
 # leg offsets
 LEG_OFFSETS = {'lf' : Vector(0, 0.0, 0),
                'rf' : Vector(0, 0.0, 0),
@@ -74,45 +74,45 @@ for cyc1 in range(0, 20):
     for stroke in range(0, stroke_amt):
         dvecs = {}
         if stroke == 0:
-            dvecs["lf"] = Vector(0, 0, 0)
-            dvecs["rf"] = Vector(0, 0, STZ)
-            dvecs["lb"] = Vector(0, 0, STZ)
-            dvecs["rb"] = Vector(0, 0, 0)
+            dvecs["lf"] = Vector( 0, 0, 0)
+            dvecs["rf"] = Vector( 0, 0, STZ)
+            dvecs["lb"] = Vector( 0, 0, STZ)
+            dvecs["rb"] = Vector( 0, 0, 0)
         elif stroke == 1:
-            dvecs["lf"] = Vector(0, -STY1, 0)
-            dvecs["rf"] = Vector(0, STY3, 0)
-            dvecs["lb"] = Vector(0, STY3, 0)
-            dvecs["rb"] = Vector(0, -STY1, 0)
+            dvecs["lf"] = Vector(-STX1, 0, 0)
+            dvecs["rf"] = Vector( STX3, 0, 0)
+            dvecs["lb"] = Vector( STX3, 0, 0)
+            dvecs["rb"] = Vector(-STX1, 0, 0)
         elif stroke == 2:
-            dvecs["lf"] = Vector(0, -STY2, 0)
-            dvecs["rf"] = Vector(0, STY2, 0)
-            dvecs["lb"] = Vector(0, STY2, 0)
-            dvecs["rb"] = Vector(0, -STY2, 0)
+            dvecs["lf"] = Vector(-STX2, 0, 0)
+            dvecs["rf"] = Vector( STX2, 0, 0)
+            dvecs["lb"] = Vector( STX2, 0, 0)
+            dvecs["rb"] = Vector(-STX2, 0, 0)
         elif stroke == 3:
-            dvecs["lf"] = Vector(0, -STY3, 0)
-            dvecs["rf"] = Vector(0, STY1, 0)
-            dvecs["lb"] = Vector(0, STY1, 0)
-            dvecs["rb"] = Vector(0, -STY3, 0)
+            dvecs["lf"] = Vector(-STX3, 0, 0)
+            dvecs["rf"] = Vector( STX1, 0, 0)
+            dvecs["lb"] = Vector( STX1, 0, 0)
+            dvecs["rb"] = Vector(-STX3, 0, 0)
         elif stroke == 4:
-            dvecs["lf"] = Vector(0, 0, STZ)
-            dvecs["rf"] = Vector(0, 0, 0)
-            dvecs["lb"] = Vector(0, 0, 0)
-            dvecs["rb"] = Vector(0, 0, STZ)
+            dvecs["lf"] = Vector( 0, 0, STZ)
+            dvecs["rf"] = Vector( 0, 0, 0)
+            dvecs["lb"] = Vector( 0, 0, 0)
+            dvecs["rb"] = Vector( 0, 0, STZ)
         elif stroke == 5:
-            dvecs["lf"] = Vector(0, STY3, 0)
-            dvecs["rf"] = Vector(0, -STY1, 0)
-            dvecs["lb"] = Vector(0, -STY1, 0)
-            dvecs["rb"] = Vector(0, STY3, 0)
+            dvecs["lf"] = Vector( STX3, 0, 0)
+            dvecs["rf"] = Vector(-STX1, 0, 0)
+            dvecs["lb"] = Vector(-STX1, 0, 0)
+            dvecs["rb"] = Vector( STX3, 0, 0)
         elif stroke == 6:
-            dvecs["lf"] = Vector(0, STY2, 0)
-            dvecs["rf"] = Vector(0, -STY2, 0)
-            dvecs["lb"] = Vector(0, -STY2, 0)
-            dvecs["rb"] = Vector(0, STY2, 0)
+            dvecs["lf"] = Vector( STX2, 0, 0)
+            dvecs["rf"] = Vector(-STX2, 0, 0)
+            dvecs["lb"] = Vector(-STX2, 0, 0)
+            dvecs["rb"] = Vector( STX2, 0, 0)
         else:
-            dvecs["lf"] = Vector(0, STY1, 0)
-            dvecs["rf"] = Vector(0, -STY3, 0)
-            dvecs["lb"] = Vector(0, -STY3, 0)
-            dvecs["rb"] = Vector(0, STY1, 0)
+            dvecs["lf"] = Vector( STX1, 0, 0)
+            dvecs["rf"] = Vector(-STX3, 0, 0)
+            dvecs["lb"] = Vector(-STX3, 0, 0)
+            dvecs["rb"] = Vector( STX1, 0, 0)
         set_dvec_targets(dvecs)
         rat1.get_body().do_em_in(dt1)
         # for leg_key in ratl.LEG_KEYS:

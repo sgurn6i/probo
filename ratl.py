@@ -10,6 +10,15 @@ import PyKDL
 from PyKDL import Vector
 import probopy
 
+# 算数
+PI = math.pi
+def get_deg(rad):
+    u"""角度 radian を degree に変えて出力"""
+    return 180.0 * (rad / PI)
+def get_rad(deg):
+    u"""角度 degree を radian に変えて出力"""
+    return PI * (deg / 180.0)
+
 # [パラメータ]
 """
 # key 呼称
@@ -167,8 +176,10 @@ class MdRatSeg(Md):
 # rat1 のデフォルト MdRatJoint インスタンス。
 # 足を下に伸ばしきった状態をposゼロとする。
 # ゼロ方向を起点として本体の左側、前側に回る方向を正の方向とする。
-# 右手系 Y軸が進行方向、X軸が右方向、Z軸が上方向。
-# 軸に向かって反時計回りが正の回転方向
+# 右手系 X軸が進行方向、Y軸が左方向、Z軸が上方向。
+# 軸に向かって反時計回りが正の回転方向。
+# note:
+# フタバRS304MDはホーン正面から見てホーンが時計回りに回る方向が正の方向。
 MD_RAT_JOINT1 = MdRatJoint(
     lf = MdLegJoint(hip   = MdJoint(offset=-45.0, mag= 1.0, pos_min= -30.0, pos_max=120.0),
                     thigh = MdJoint(offset= 25.0, mag= 1.0, pos_min= -70.0, pos_max= 65.0),
@@ -211,32 +222,24 @@ MD_RAT_PWMSERVO1 = MdRatPwmservo(
 
 # 各KDL segment パラメータ デフォルト値
 MD_RAT_SEG1 = MdRatSeg(
-    lf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-64.0, 57.5, 0.0)),
-                  hip   = MdSeg(joint=Vector(0,1,0), tip=Vector(0.0, 0.0,   0.0)),
-                  thigh = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -58.0)),
-                  shin  = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -59.0))),
-    rf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector( 64.0, 57.5, 0.0)),
-                  hip   = MdSeg(joint=Vector(0,1,0), tip=Vector(0.0, 0.0,   0.0)),
-                  thigh = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -58.0)),
-                  shin  = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -59.0))),
-    lb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-64.0,-57.5, 0.0)),
-                  hip   = MdSeg(joint=Vector(0,1,0), tip=Vector(0.0, 0.0,   0.0)),
-                  thigh = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -58.0)),
-                  shin  = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -59.0))),
-    rb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector( 64.0,-57.5, 0.0)),
-                  hip   = MdSeg(joint=Vector(0,1,0), tip=Vector(0.0, 0.0,   0.0)),
-                  thigh = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -58.0)),
-                  shin  = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0, -59.0))),
+    lf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(57.5, 64.0, 0.0)),
+                  hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
+                  thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
+                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -59.0))),
+    rf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(57.5,-64.0, 0.0)),
+                  hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
+                  thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
+                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -59.0))),
+    lb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-57.5, 64.0, 0.0)),
+                  hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
+                  thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
+                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -59.0))),
+    rb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-57.5,-64.0, 0.0)),
+                  hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
+                  thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
+                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -59.0))),
     )
 
-# 算数
-PI = math.pi
-def get_deg(rad):
-    u"""角度 radian を degree に変えて出力"""
-    return 180.0 * (rad / PI)
-def get_rad(deg):
-    u"""角度 degree を radian に変えて出力"""
-    return PI * (deg / 180.0)
 
 class Magj:
     u"""Magnified Joint.
