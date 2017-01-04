@@ -43,6 +43,7 @@ THE SOFTWARE.
 
 #ifndef _I2CDEV_H_
 #define _I2CDEV_H_
+#include <string>
 
 #ifndef TRUE
 #define TRUE	(1==1)
@@ -72,7 +73,7 @@ class I2Cdev {
         static bool writeWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint16_t *data);
 
         static uint16_t readTimeout;
-        static const char * dev_path;
+        static std::string dev_path;
 };
 
 #endif /* _I2CDEV_H_ */

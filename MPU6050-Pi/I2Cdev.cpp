@@ -46,6 +46,7 @@ THE SOFTWARE.
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string>
 #include <string.h>
 #include <errno.h>
 #include <sys/ioctl.h>
@@ -55,7 +56,7 @@ THE SOFTWARE.
 #include "I2Cdev.h"
 
 //#define I2C_DEVICE_NAME "/dev/i2c-1"
-const char * I2Cdev::dev_path = "/dev/i2c-0";
+std::string I2Cdev::dev_path = "/dev/i2c-0";
  
 /** Default constructor.
  */
@@ -175,10 +176,10 @@ int8_t I2Cdev::readWord(uint8_t devAddr, uint8_t regAddr, uint16_t *data, uint16
  */
 int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8_t *data, uint16_t timeout) {
     int8_t count = 0;
-    int fd = open(dev_path, O_RDWR);
+    int fd = open(dev_path.c_str(), O_RDWR);
 
     if (fd < 0) {
-        fprintf(stderr, "Failed to open device: %s\n", strerror(errno));
+      fprintf(stderr, "Failed to open device: %s %s\n", dev_path.c_str(), strerror(errno));
         return(-1);
     }
     if (ioctl(fd, I2C_SLAVE, devAddr) < 0) {
@@ -347,7 +348,7 @@ bool I2Cdev::writeBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8_
         return(FALSE);
     }
 
-    fd = open(dev_path, O_RDWR);
+    fd = open(dev_path.c_str(), O_RDWR);
     if (fd < 0) {
         fprintf(stderr, "Failed to open device: %s\n", strerror(errno));
         return(FALSE);
@@ -394,7 +395,7 @@ bool I2Cdev::writeWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint16
         return(FALSE);
     }
 
-    fd = open(dev_path, O_RDWR);
+    fd = open(dev_path.c_str(), O_RDWR);
     if (fd < 0) {
         fprintf(stderr, "Failed to open device: %s\n", strerror(errno));
         return(FALSE);

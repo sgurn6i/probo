@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <string>
 #include <errno.h>
 #include <math.h>
 #include <kdl/frames.hpp>

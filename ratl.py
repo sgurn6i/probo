@@ -598,6 +598,8 @@ class Ratl:
         gyro = probopy.Pmpu6050(self._name + "_mpu6050")
         rc = gyro.init(device, i2c_addr)
         if rc == probopy.EA1_OK:
+            rc = self._body.add_child(gyro)
+        if rc == probopy.EA1_OK:
             self._gyro = gyro
         return rc
     def set_kdl_segs(self, md_rat_seg=MD_RAT_SEG1):
@@ -608,8 +610,21 @@ class Ratl:
         assert(isinstance(md_rat_seg, MdRatSeg))
         for key, val in md_rat_seg.items():
             self._legs[key].set_kdl_segs(val)
-            
-        
+    def get_gyro_curr_q(self):
+        u""" get current Gyro angle quaternion.
+        Returns:
+          rc: return code. 失敗したら負数を返す。
+          x: quaternion x
+          y: quaternion y
+          z: quaternion z
+          w: quaternion w
+        """
+        if self._gyro:
+            rc,x,y,z,w = self._gyro.get_curr_quat()
+            return rc,x,y,z,w
+        else:
+            return probopy.EA1_E_NOT_READY, 0.0, 0.0, 0.0, 1.0
+
 def create_rat1(name="rat1"):
     u""" MD_RAT_JOINT1をジョイントパラメータとするRatlインスタンスを生成して返す。
     """
