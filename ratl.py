@@ -31,6 +31,7 @@ SW_PARAMETER_KEYS = ('on')
 PWMSERVO_KEYS = ('ch', 'svtype')
 SEG_PARAMETER_KEYS = ('joint', 'tip')
 LEG_SEG_KEYS = ('body', 'hip', 'thigh', 'shin', 'foot_x', 'foot_y', 'foot_z')
+RPY_KEYS = ('roll', 'pitch', 'yaw')
 
 # パラメータ格納クラス。
 class Md(collections.Mapping):
@@ -173,6 +174,19 @@ class MdRatSeg(Md):
             assert(key in LEG_KEYS)
         Md.__init__(self, **kwargs)
 
+# Rotation
+class MdRpy(Md):
+    u"""Md の内、key が RPY_KEYS に含まれていなければならないもの。
+    roll, pitch, yaw 回転。単位degree。
+    rotation by first applying a rotation of roll around the x-axis,
+    then a rotation of pitch around the original y-axis,
+    and finally a rotation of yaw around the original z-axis.
+    """
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            assert(key in RPY_KEYS)
+        Md.__init__(self, **kwargs)
+
 # rat1 のデフォルト MdRatJoint インスタンス。
 # 足を下に伸ばしきった状態をposゼロとする。
 # ゼロ方向を起点として本体の左側、前側に回る方向を正の方向とする。
@@ -240,6 +254,9 @@ MD_RAT_SEG1 = MdRatSeg(
                   shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -59.0))),
     )
 
+# Gyro座標系のbody座標系に対する回転。
+# rat1のデフォルト値(degree)
+MD_RAT_GYRO_RPY1 = MdRpy(roll = 0.0, pitch = 0.0, yaw =180.0)
 
 class Magj:
     u"""Magnified Joint.
@@ -589,7 +606,21 @@ class Ratl:
         if rc == probopy.EA1_OK:
             rc = self.set_pwm(self._pca1, md_rat_pwmservo)
         return rc
-    def prepare_mpu6050(self, device="/dev/i2c-1", i2c_addr=0x68):
+    def set_gyro_rpy(self, rpy=MD_RAT_GYRO_RPY1):
+        u"""GyroのBodyに対する回転を設定する。
+        Arguments:
+          rpy:  回転角(degree)。MdRpyのインスタンス。
+        設定されるもの:
+          gyro出力(Rg)をBodyの回転(Rb)に変換するための行列を設定する。
+          self._gyro_rot_left: Rgの左側から掛ける回転行列。
+          self._gyro_rot_right: Rgの右側から掛ける回転行列。
+        """
+        self._gyro_rot_left = PyKDL.Rotation.RPY(0.0, 0.0, get_rad(rpy["yaw"]))
+        tf_gyro = PyKDL.Rotation.RPY(
+            get_rad(rpy["roll"]), get_rad(rpy["pitch"]), get_rad(rpy["yaw"]))
+        self._gyro_rot_right = tf_gyro.Inverse()
+
+    def prepare_mpu6050(self, device="/dev/i2c-1", i2c_addr=0x68, rpy=MD_RAT_GYRO_RPY1):
         u""" prepare MPU6050 Gyro 
         connect to i2c device,
         Arguments:
@@ -604,6 +635,8 @@ class Ratl:
             rc = self._body.add_child(gyro)
         if rc == probopy.EA1_OK:
             self._gyro = gyro
+        if rc == probopy.EA1_OK:
+            self.set_gyro_rpy(rpy)
         return rc
     def set_kdl_segs(self, md_rat_seg=MD_RAT_SEG1):
         u""" set KDL segments.
@@ -623,7 +656,12 @@ class Ratl:
           w: quaternion w
         """
         if self._gyro:
-            rc,x,y,z,w = self._gyro.get_curr_quat()
+            rc,gx,gy,gz,gw = self._gyro.get_curr_quat()
+            rot_gyro = PyKDL.Rotation.Quaternion(gx,gy,gz,gw)
+            rot_body = self._gyro_rot_left \
+                       * rot_gyro \
+                       * self._gyro_rot_right
+            x,y,z,w = rot_body.GetQuaternion()
             return rc,x,y,z,w
         else:
             return probopy.EA1_E_NOT_READY, 0.0, 0.0, 0.0, 1.0
