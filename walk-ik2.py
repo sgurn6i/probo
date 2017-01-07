@@ -10,7 +10,7 @@ lp_neutral = {'hip': 2.0, 'thigh':  -28.0, 'shin': 55.0}
 
 # params
 stroke_amt = 8 # 一周期のストローク数
-dt1 = 80  # 遷移時間(ms)
+dt1 = 120  # 遷移時間(ms)
 # step width constants(mm)
 STZ = 20
 STY = 10
@@ -67,6 +67,9 @@ rat1.get_body().do_em_in(dt1)
 
 # prompt
 aa = raw_input('press enter > ')
+
+# reset time
+rat1.get_body().reset_time()
 
 # walk
 for cyc1 in range(0, 15):

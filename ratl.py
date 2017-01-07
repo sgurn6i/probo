@@ -38,7 +38,7 @@ class Md(collections.Mapping):
     u"""Mapping data コンテナ。
     key=value で指定されたデータを要素とする辞書として働く。
     ただし、後から項目を追加したり、削除したりはできない。
-    Attributes:
+v    Attributes:
       0個、1個、または複数のキーワード付き引数。
     """
     def __init__(self, **kwargs):
@@ -542,6 +542,7 @@ class Ratl:
         assert(isinstance(md_rat_joint, MdRatJoint))
         self._name = name
         self._body = probopy.Body(name)
+        self._body.set_tick(50.0)
         self._ctj = probopy.Controller(name + "_ctj")
         self._body.add_child(self._ctj)
         self._gyro = None

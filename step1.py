@@ -43,6 +43,9 @@ print "ready to start"
 # prompt
 aa = raw_input('press enter > ')
 
+# reset time
+rat1.get_body().reset_time()
+
 # walk
 for cyc1 in range(0, 15):
     print "cycle", cyc1

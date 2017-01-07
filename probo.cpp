@@ -81,24 +81,30 @@ int Body::reset_sense()
 int Body::do_em_in(double time)
 {
   int rc = EA1_OK;
-  /* Todo: time reset 必要か。*/
-  reset_time();
+  /* reset_time() はしない。
+   * できるだけユーザー設定時間に追いつくように制御する。 */
   double time_target = m_time_prev + time;
-  double time_lap = m_time_prev;    /* calculated lap time. */
+  /* 遅れを考慮して、作業するために与えられたる時間。 */
+  double wt = time_target - ea1_gettimeofday_ms();
+  /* 次にコントローラに指令し、動作及びsleepを終える時点と計画した所の時刻。 */
+  double time_lap = m_time_prev;
+  double time_sleep = 0.0;
+  int count = 0;
   if (m_tick <= 0.0)
     return EA1_FAIL;
   do
     {
-      time_lap += m_tick;
+      time_lap = ea1_gettimeofday_ms() + m_tick;
       double lap_percent;
-      if ((time_lap >= time_target) || (time <= 0.0))
+      /* 最終lap近くなら一気に進める。 */
+      if ((time_lap >= time_target - m_tick * 0.5) || (wt <= 0.0))
         {
           lap_percent = 100.0;
           time_lap = time_target;
         }
       else
         {
-          lap_percent = (time_lap - m_time_prev) / time * 100.0;
+          lap_percent = (time_lap - m_time_prev) / wt * 100.0;
           if (lap_percent > 100.0)
             lap_percent = 100.0;
         }
@@ -106,17 +112,24 @@ int Body::do_em_in(double time)
       rc = make_go_target_at(lap_percent);
       if (rc < 0)
         goto RET;
-      double time_sleep = time_lap - ea1_gettimeofday_ms();
-      LOGD("%s %s: t %f, dt %f, sleep %f, %f %%",
-           get_name().c_str(), __func__, time_lap, time_lap - m_time_prev,
+      /* 余り時間は寝て待つ。 */
+      time_sleep = time_lap - ea1_gettimeofday_ms();
+      LOGD("%s %s: %d t %.2f, dt %.2f, sleep %.2f, %.2f %%",
+           get_name().c_str(), __func__, count, time_lap, time_lap - m_time_prev,
            time_sleep, lap_percent);
       if (time_sleep > 0)   // 2016-10-12 15:30:36 added
-        ea1_sleep_ms(time_sleep); 
+        ea1_sleep_ms(time_sleep);
+      count ++;
     }
   while (time_lap < time_target);
+  if (time_sleep < 0)
+    {
+      LOGD("%s %s: count %d wt %.2f delay %.2f",
+           get_name().c_str(), __func__, count, wt, - time_sleep);
+    }
  RET:
   make_update_pos();
-  m_time_prev = time_lap;
+  m_time_prev = time_target;
   return rc;
 }
 
