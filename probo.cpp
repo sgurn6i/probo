@@ -270,20 +270,23 @@ Joint::Joint(const std::string& name)
 
 int Joint::go_target_at(double percent)
 {
+  //LOGI ("kese %s %s", get_name().c_str(), __func__);
   int rc = EA1_OK;
   double ratio = percent * 0.01;
   if (ratio < 0.0) ratio = 0.0;
   if (ratio > 1.0) ratio = 1.0;
   /* curr_pos to be updated. */
   double new_curr_pos = m_prev_pos + (m_target_pos - m_prev_pos) * ratio;
-  /* 近いのは変えない。 Todo: 途中でservo起動したりすると面倒なことになりそう.. */
-  if(! NEAR_POS(m_curr_pos, new_curr_pos, 1.0e-5))
+  /* 近いのは変えない。 途中でservo起動したりする場合は別。 */
+  if ((! NEAR_POS(m_curr_pos, new_curr_pos, 1.0e-5))
+      || m_1st_go_on_hwj)
     {
       m_curr_pos = new_curr_pos;
       Hwc * hwc = get_hwc();
       if (m_hwj != NULL)
         {
           rc = m_hwj->set_curr_deg( m_curr_pos, hwc );
+          m_1st_go_on_hwj = false;
         }
     }
   LOGD("%s %s: %f %% pos %f rc %d", get_name().c_str(), __func__, percent, m_curr_pos, rc);
@@ -332,6 +335,7 @@ probo::Hwc * Joint::get_hwc()
 int Joint::attach_hwj( probo::Hwj& hwj )
 {
   int rc = EA1_OK;
+  m_1st_go_on_hwj = true;
   if (! hwj.is_initialized())
     {
       LOGE("%s %s: hwj is not initialized", get_name().c_str(), __func__);

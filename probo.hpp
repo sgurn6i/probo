@@ -104,6 +104,8 @@ namespace probo
     double m_prev_pos = 0.0;  // 過去位置、動作開始時の位置。
     double m_curr_pos = 0.0;  // 現在位置
     Hwj * m_hwj = NULL;
+    /* hwjをattachしてからの最初のgo targetを待っているを示す。 */
+    bool m_1st_go_on_hwj = true;
   };
 
   /* abstract センサー。gyro-accel等。 */
