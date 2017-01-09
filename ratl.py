@@ -285,7 +285,7 @@ class Magj:
         self._pos_max = pos_max
     def __str__(self):
         u"""returns joint name, servo ch, self attributes"""
-        servo = self._joint.get_pwmservo()
+        servo = self._joint.get_hwj()
         if servo:
             servo_str = "servo#" + str(servo.get_ch())
         else:
