@@ -38,7 +38,7 @@ class Md(collections.Mapping):
     u"""Mapping data コンテナ。
     key=value で指定されたデータを要素とする辞書として働く。
     ただし、後から項目を追加したり、削除したりはできない。
-v    Attributes:
+    Attributes:
       0個、1個、または複数のキーワード付き引数。
     """
     def __init__(self, **kwargs):
@@ -232,26 +232,26 @@ MD_RAT_PWMSERVO1 = MdRatPwmservo(
     )
 
 # leg 各segmentの長さ(mm)
-#leg_seg_lens = { 'hip': 0.0, 'thigh': 58.0, 'shin': 59.0 }
+#leg_seg_lens = { 'hip': 0.0, 'thigh': 58.0, 'shin': 80.0 }
 
 # 各KDL segment パラメータ デフォルト値
 MD_RAT_SEG1 = MdRatSeg(
     lf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(57.5, 64.0, 0.0)),
                   hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
                   thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
-                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -59.0))),
+                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -80.0))),
     rf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(57.5,-64.0, 0.0)),
                   hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
                   thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
-                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -59.0))),
+                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -80.0))),
     lb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-57.5, 64.0, 0.0)),
                   hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
                   thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
-                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -59.0))),
+                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -80.0))),
     rb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-57.5,-64.0, 0.0)),
                   hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
                   thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
-                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -59.0))),
+                  shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -80.0))),
     )
 
 # Gyro座標系のbody座標系に対する回転。
@@ -675,23 +675,34 @@ def create_rat1(name="rat1"):
 
 # お試し
 if __name__ == '__main__':
+    dt1 = 50  # 遷移時間(ms)
     rat1 = Ratl(name="ratl")
     rat1.set_kdl_segs()
+    rc = rat1.prepare_pca()
+    print "prepare_pca rc =", rc
     # fk
     for leg_key in LEG_KEYS:
         rat1.get_legs()[leg_key].target(0, 0, 0)
-    rat1.get_body().do_em_in(10)
-    vec0, rc = rat1.get_legs()['lf'].get_fk_vec()
-    print type(vec0)
-    print "zero xyz", vec0
-    target_hts = {'hip':0, 'thigh':-22.5, 'shin': 45.0}
+    rat1.get_body().do_em_in(0)
+    rat1.get_body().do_em_in(dt1)
+    print "zero position."
+    # neutral position vector
+    print "zero position foot axis:"
+    vecs_zero = {}
+    for key in LEG_KEYS:
+        vecs_zero[key], rc = rat1.get_legs()[key].get_fk_vec()
+        print " ", key, vecs_zero[key]
+        assert rc >= 0
+    # prompt
+    aa = raw_input('press enter > ')
+    # neutral position
+    target_hts = {'hip':0, 'thigh':-32, 'shin': 83.0}
     for leg_key in LEG_KEYS:
         rat1.get_legs()[leg_key].target(**target_hts)
-    rat1.get_body().do_em_in(10)
+    rat1.get_body().do_em_in(dt1)
     vec1, rc = rat1.get_legs()['lf'].get_fk_vec()
     print "newtral hts", target_hts
-    print "neutral xyz", vec1
-    vec1[1] += 10
-    hts2,rc = rat1.get_legs()['lf'].calc_ik_pos(vec1)
-    print "rc = %d, hts2 %s" % (rc, hts2)
+    print "neutral xyz lf", vec1
+    print "delta xyz lf  ", vec1 - vecs_zero['lf']
+    
 
