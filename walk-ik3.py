@@ -5,26 +5,22 @@
 import ratl
 from PyKDL import Vector
 
-# Initial Leg Position
-lp_neutral = {'hip': 2.0, 'thigh':  -28.0, 'shin': 55.0}
-
 # params
 stroke_amt = 8 # 一周期のストローク数
 dt1 = 120  # 遷移時間(ms)
 # step width constants(mm)
-STZ = 20
+STZ = 25
 STY = 10
-STX = 5
+STX = 8
 STX0 = 0
 STX1 = STX * 1
 STX2 = STX * 2
 STX3 = STX * 3
-STX4 = STX * 4
 # leg offsets
-LEG_OFFSETS = {'lf' : Vector(0, 0.0, 0),
-               'rf' : Vector(0, 0.0, 0),
-               'lb' : Vector(0, -0.0, 0),
-               'rb' : Vector(0, -0.0, 0), }
+LEG_OFFSETS = {'lf' : Vector(0, 0.0, -10),
+               'rf' : Vector(0, 0.0, -10),
+               'lb' : Vector(0, -0.0, -10),
+               'rb' : Vector(0, -0.0, -10), }
 
 # rat
 rat1 = ratl.Ratl(name="rat1")
@@ -34,8 +30,7 @@ rc = rat1.prepare_pca()
 print "prepare_pca rc =", rc
 
 # start pos
-for leg_key in ratl.LEG_KEYS:
-    rat1.get_legs()[leg_key].target(**lp_neutral)
+rat1.target_neutral()
 rat1.get_body().do_em_in(0)
 rat1.get_body().do_em_in(dt1)
 print "ready to start"
