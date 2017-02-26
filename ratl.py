@@ -196,19 +196,19 @@ class MdRpy(Md):
 # フタバRS304MDはホーン正面から見てホーンが時計回りに回る方向が正の方向。
 MD_RAT_JOINT1 = MdRatJoint(
     lf = MdLegJoint(hip   = MdJoint(offset=-45.0, mag= 1.0, pos_min= -30.0, pos_max=120.0),
-                    thigh = MdJoint(offset= 25.0, mag= 1.0, pos_min= -70.0, pos_max= 65.0),
+                    thigh = MdJoint(offset= 60.0, mag= 1.0, pos_min= -120.0, pos_max= 10.0),
                     shin  = MdJoint(offset=-65.0, mag= 1.0, pos_min= -45.0, pos_max=145.0),
                     foot_sw = MdSw(on=0)),
     rf = MdLegJoint(hip   = MdJoint(offset= 45.0, mag= 1.0, pos_min=-120.0, pos_max= 30.0),
-                    thigh = MdJoint(offset= 25.0, mag=-1.0, pos_min= -70.0, pos_max= 65.0),
+                    thigh = MdJoint(offset= 60.0, mag=-1.0, pos_min= -120.0, pos_max= 10.0),
                     shin  = MdJoint(offset=-65.0, mag=-1.0, pos_min= -45.0, pos_max=145.0),
                     foot_sw = MdSw(on=0)),
     lb = MdLegJoint(hip   = MdJoint(offset=-45.0, mag= 1.0, pos_min= -30.0, pos_max=120.0),
-                    thigh = MdJoint(offset= 25.0, mag= 1.0, pos_min= -70.0, pos_max= 65.0),
+                    thigh = MdJoint(offset= 60.0, mag= 1.0, pos_min= -120.0, pos_max= 10.0),
                     shin  = MdJoint(offset=-65.0, mag= 1.0, pos_min= -45.0, pos_max=145.0),
                     foot_sw = MdSw(on=0)),
     rb = MdLegJoint(hip   = MdJoint(offset= 45.0, mag= 1.0, pos_min=-120.0, pos_max= 30.0),
-                    thigh = MdJoint(offset= 25.0, mag=-1.0, pos_min= -70.0, pos_max= 65.0),
+                    thigh = MdJoint(offset= 60.0, mag=-1.0, pos_min= -120.0, pos_max= 10.0),
                     shin  = MdJoint(offset=-65.0, mag=-1.0, pos_min= -45.0, pos_max=145.0),
                     foot_sw = MdSw(on=0)),
     )
@@ -234,25 +234,31 @@ MD_RAT_PWMSERVO1 = MdRatPwmservo(
 # leg 各segmentの長さ(mm)
 #leg_seg_lens = { 'hip': 0.0, 'thigh': 58.0, 'shin': 80.0 }
 
+# x方向単位ベクトルをXZ平面内Y軸まわりに+35度回したベクトル。
+VECTOR_XZ35 = Vector(math.cos(get_rad(35)), 0.0, - math.sin(get_rad(35)))
+
 # 各KDL segment パラメータ デフォルト値
 MD_RAT_SEG1 = MdRatSeg(
-    lf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(57.5, 64.0, 0.0)),
-                  hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
+    lf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(70.5, 64.0, 0.0)),
+                  hip   = MdSeg(joint=VECTOR_XZ35,   tip=Vector(0.0, 0.0,   0.0)),
                   thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
                   shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -80.0))),
-    rf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(57.5,-64.0, 0.0)),
-                  hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
+    rf = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(70.5,-64.0, 0.0)),
+                  hip   = MdSeg(joint=VECTOR_XZ35,   tip=Vector(0.0, 0.0,   0.0)),
                   thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
                   shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -80.0))),
-    lb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-57.5, 64.0, 0.0)),
-                  hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
+    lb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-70.5, 64.0, 0.0)),
+                  hip   = MdSeg(joint=VECTOR_XZ35,   tip=Vector(0.0, 0.0,   0.0)),
                   thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
                   shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -80.0))),
-    rb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-57.5,-64.0, 0.0)),
-                  hip   = MdSeg(joint=Vector(1,0,0), tip=Vector(0.0, 0.0,   0.0)),
+    rb = MdLegSeg(body  = MdSeg(joint=Vector(0,0,0), tip=Vector(-70.5,-64.0, 0.0)),
+                  hip   = MdSeg(joint=VECTOR_XZ35,   tip=Vector(0.0, 0.0,   0.0)),
                   thigh = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -58.0)),
                   shin  = MdSeg(joint=Vector(0,-1,0), tip=Vector(0.0, 0.0, -80.0))),
     )
+
+# rat neutral servo positions
+RAT_NEUTRAL_SERVO_POSITIONS = {'hip':0, 'thigh':-64.06, 'shin': 100.17}  
 
 # Gyro座標系のbody座標系に対する回転。
 # rat1のデフォルト値(degree)
@@ -392,6 +398,14 @@ class Leg:
             first = False
             str1 += str(mj.get_curr_pos())
         return (str1)
+    def get_positions(self):
+        u"""現在のhip, thigh, shin の mpos を返す。
+        LEG_KEYS をキーとする辞書を返す。"""
+        positions = {}
+        for key in LEG_JOINT_KEYS:
+            mj = self._mjs[key]
+            positions[key] = mj.get_curr_pos()
+        return (positions)
     def target(self, *args, **kwargs):
         u"""各Magjのtarget posを設定する。
         一部だけ設定するのも可。
@@ -666,6 +680,11 @@ class Ratl:
             return rc,x,y,z,w
         else:
             return probopy.EA1_E_NOT_READY, 0.0, 0.0, 0.0, 1.0
+    def target_neutral(self):
+        u"""set legs targets to neutral positions"""
+        target_hts = RAT_NEUTRAL_SERVO_POSITIONS
+        for leg_key in LEG_KEYS:
+            self.get_legs()[leg_key].target(**target_hts)
 
 def create_rat1(name="rat1"):
     u""" MD_RAT_JOINT1をジョイントパラメータとするRatlインスタンスを生成して返す。
@@ -675,17 +694,30 @@ def create_rat1(name="rat1"):
 
 # お試し
 if __name__ == '__main__':
-    dt1 = 50  # 遷移時間(ms)
+    def set_ik_targets(rat, vecs, vec_offset = Vector(0,0,0)):
+        vecs_w_offset = {}
+        for key in LEG_KEYS:
+            vec = vecs[key] + vec_offset
+            rc = rat.get_legs()[key].set_ik_target(vec)
+            assert rc >= 0
+            vecs_w_offset[key] = vec
+        return vecs_w_offset
+    def get_fk_vecs(rat):
+        vecs = {}
+        for key in LEG_KEYS:
+            vecs[key],rc = rat.get_legs()[key].get_fk_vec()
+        return vecs
+    dt1 = 500  # 遷移時間(ms)
     rat1 = Ratl(name="ratl")
     rat1.set_kdl_segs()
     rc = rat1.prepare_pca()
     print "prepare_pca rc =", rc
-    # fk
+    # fk zero
     for leg_key in LEG_KEYS:
         rat1.get_legs()[leg_key].target(0, 0, 0)
     rat1.get_body().do_em_in(0)
     rat1.get_body().do_em_in(dt1)
-    print "zero position."
+    print "zero position hts lf ", rat1.get_legs()['lf'].get_positions()
     # neutral position vector
     print "zero position foot axis:"
     vecs_zero = {}
@@ -695,14 +727,67 @@ if __name__ == '__main__':
         assert rc >= 0
     # prompt
     aa = raw_input('press enter > ')
-    # neutral position
-    target_hts = {'hip':0, 'thigh':-32, 'shin': 83.0}
+    # reset time
+    rat1.get_body().set_tick(40.0)
+    rat1.get_body().reset_time()
+    # fk positions
+    target_hts = {'hip':0, 'thigh':-64, 'shin': 83.0}
     for leg_key in LEG_KEYS:
         rat1.get_legs()[leg_key].target(**target_hts)
     rat1.get_body().do_em_in(dt1)
     vec1, rc = rat1.get_legs()['lf'].get_fk_vec()
-    print "newtral hts", target_hts
+    print "fk hts", target_hts
+    print "fk xyz lf", vec1
+    print "fk delta xyz lf  ", vec1 - vecs_zero['lf']
+    rat1.get_body().do_em_in(dt1) # pause
+    # ik
+    vec_offset = Vector(-5.0, 0, -90.0 - vecs_zero['lf'][2])
+    vecs_neutral = set_ik_targets(rat1, vecs_zero, vec_offset)
+    rat1.get_body().do_em_in(dt1)
+    vec1, rc = rat1.get_legs()['lf'].get_fk_vec()
+    print "ik near neutral xyz lf", vec1
+    print "ik delta xyz lf ", vec1 - vecs_zero['lf']
+    print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
+    rat1.get_body().do_em_in(dt1) # pause
+    # up down
+    stz = 35
+    print "half stroke z = ", stz
+    vecs_up = set_ik_targets(rat1, vecs_neutral, Vector(0, 0, -stz))
+    rat1.get_body().do_em_in(dt1)
+    print "ik up xyz lf", vecs_up['lf']
+    print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
+    rat1.get_body().do_em_in(dt1) # pause
+    vecs_dn = set_ik_targets(rat1, vecs_neutral, Vector(0, 0, stz))
+    rat1.get_body().do_em_in(dt1)
+    print "ik dn xyz lf", vecs_dn['lf']
+    print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
+    rat1.get_body().do_em_in(dt1) # pause
+    # back front
+    stx = 40
+    print "half stroke x = ", stx
+    vecs_dn_back = set_ik_targets(rat1, vecs_neutral, Vector(stx, 0, stz))
+    rat1.get_body().do_em_in(dt1)
+    print "ik dn back xyz lf", vecs_dn_back['lf']
+    print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
+    rat1.get_body().do_em_in(dt1) # pause
+    vecs_dn_front = set_ik_targets(rat1, vecs_neutral, Vector(-stx, 0, stz))
+    rat1.get_body().do_em_in(dt1)
+    print "ik dn front xyz lf", vecs_dn_front['lf']
+    print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
+    rat1.get_body().do_em_in(dt1) # pause
+    # return zero
+    vecs = get_fk_vecs(rat1)
+    set_ik_targets(rat1, vecs, Vector(vecs_zero['lf'][0] - vecs['lf'][0], 0, 0)) # x方向戻す
+    rat1.get_body().do_em_in(dt1)
+    rat1.get_body().do_em_in(dt1) # pause
+    rat1.target_neutral()
+    rat1.get_body().do_em_in(dt1)
+    print "returned to neutral"
+    print "neutral hts lf ", rat1.get_legs()['lf'].get_positions()
+    vec1, rc = rat1.get_legs()['lf'].get_fk_vec()
     print "neutral xyz lf", vec1
-    print "delta xyz lf  ", vec1 - vecs_zero['lf']
+    rat1.get_body().do_em_in(dt1) # pause
+    set_ik_targets(rat1, vecs_zero)
+    rat1.get_body().do_em_in(dt1*2)
+    print "returned to zero"
     
-

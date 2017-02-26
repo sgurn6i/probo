@@ -9,9 +9,9 @@ import PyKDL
 from PyKDL import Vector
 
 # Initial Leg Position
-#lp_neutral = {'hip': 2.0, 'thigh':  -28.0, 'shin': 55.0}
-#lp_neutral = {'hip': 2.0, 'thigh':  -25.0, 'shin': 45.0}
-lp_neutral = {'hip': 2.0, 'thigh':  -35.0, 'shin': 75.0}
+#lp_neutral = {'hip': 2.0, 'thigh':  -35.0, 'shin': 75.0}
+#lp_neutral = {'hip': 0.0, 'thigh':  -32.0, 'shin': 83.0}
+
 
 # params
 stroke_amt = 8 # 一周期のストローク数
@@ -29,7 +29,7 @@ leg_offsets = {'lf' : Vector(0, 0.0, 0),
 # trim limits
 tx_limit = 15
 ty_limit = 15
-tz_limit = 15
+tz_limit = 30
 
 # abs limit values
 def abs_limit(d, limit):
@@ -53,8 +53,7 @@ rc = rat1.prepare_pca()
 print "prepare_pca rc =", rc
 
 # start pos
-for leg_key in ratl.LEG_KEYS:
-    rat1.get_legs()[leg_key].target(lp_neutral)
+rat1.target_neutral()
 rat1.get_body().do_em_in(0)
 rat1.get_body().do_em_in(dt1)
 print "ready to start"
