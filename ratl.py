@@ -262,7 +262,7 @@ RAT_NEUTRAL_SERVO_POSITIONS = {'hip':0, 'thigh':-64.06, 'shin': 100.17}
 
 # Gyro座標系のbody座標系に対する回転。
 # rat1のデフォルト値(degree)
-MD_RAT_GYRO_RPY1 = MdRpy(roll = 0.0, pitch = 0.0, yaw =180.0)
+MD_RAT_GYRO_RPY1 = MdRpy(roll = 0.0, pitch = -35.0, yaw =180.0)
 
 class Magj:
     u"""Magnified Joint.
@@ -707,6 +707,14 @@ if __name__ == '__main__':
         for key in LEG_KEYS:
             vecs[key],rc = rat.get_legs()[key].get_fk_vec()
         return vecs
+    def get_rpy_rads(rat):
+        rc,x,y,z,w = rat.get_gyro_curr_q()
+        r1 = PyKDL.Rotation.Quaternion(x,y,z,w)
+        roll, pitch, yaw = r1.GetRPY()
+        return roll, pitch, yaw
+    def get_rpy_degs(rat):
+        roll, pitch, yaw = get_rpy_rads(rat)
+        return get_deg(roll), get_deg(pitch), get_deg(yaw)
     dt1 = 500  # 遷移時間(ms)
     rat1 = Ratl(name="ratl")
     rat1.set_kdl_segs()
@@ -727,9 +735,16 @@ if __name__ == '__main__':
         assert rc >= 0
     # prompt
     aa = raw_input('press enter > ')
+    # prepare gyro
+    rc = rat1.prepare_mpu6050()
+    print "prepare_mpu6050 rc =", rc
     # reset time
     rat1.get_body().set_tick(40.0)
     rat1.get_body().reset_time()
+    print "reset time"
+    # rpy angles
+    r,p,y = get_rpy_degs(rat1)
+    print "r,p,y degs: ", r, p, y
     # fk positions
     target_hts = {'hip':0, 'thigh':-64, 'shin': 83.0}
     for leg_key in LEG_KEYS:
@@ -763,16 +778,16 @@ if __name__ == '__main__':
     print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
     rat1.get_body().do_em_in(dt1) # pause
     # back front
-    stx = 40
+    stx = 35
     print "half stroke x = ", stx
-    vecs_dn_back = set_ik_targets(rat1, vecs_neutral, Vector(stx, 0, stz))
-    rat1.get_body().do_em_in(dt1)
-    print "ik dn back xyz lf", vecs_dn_back['lf']
-    print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
-    rat1.get_body().do_em_in(dt1) # pause
     vecs_dn_front = set_ik_targets(rat1, vecs_neutral, Vector(-stx, 0, stz))
     rat1.get_body().do_em_in(dt1)
     print "ik dn front xyz lf", vecs_dn_front['lf']
+    print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
+    rat1.get_body().do_em_in(dt1) # pause
+    vecs_dn_back = set_ik_targets(rat1, vecs_neutral, Vector(stx, 0, stz))
+    rat1.get_body().do_em_in(dt1)
+    print "ik dn back xyz lf", vecs_dn_back['lf']
     print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
     rat1.get_body().do_em_in(dt1) # pause
     # return zero
