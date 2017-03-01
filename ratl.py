@@ -786,7 +786,7 @@ if __name__ == '__main__':
     print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
     rat1.get_body().do_em_in(dt1) # pause
     vecs_dn_back = set_ik_targets(rat1, vecs_neutral, Vector(stx, 0, stz))
-    rat1.get_body().do_em_in(dt1)
+    rat1.get_body().do_em_in(dt1*2)
     print "ik dn back xyz lf", vecs_dn_back['lf']
     print "ik hts lf ", rat1.get_legs()['lf'].get_positions()
     rat1.get_body().do_em_in(dt1) # pause
