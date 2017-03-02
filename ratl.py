@@ -262,7 +262,7 @@ RAT_NEUTRAL_SERVO_POSITIONS = {'hip':0, 'thigh':-64.06, 'shin': 100.17}
 
 # Gyro座標系のbody座標系に対する回転。
 # rat1のデフォルト値(degree)
-MD_RAT_GYRO_RPY1 = MdRpy(roll = 0.0, pitch = -35.0, yaw =180.0)
+MD_RAT_GYRO_RPY1 = MdRpy(roll = 0.0, pitch = -30.0, yaw =180.0)
 
 class Magj:
     u"""Magnified Joint.
