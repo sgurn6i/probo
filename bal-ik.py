@@ -22,10 +22,10 @@ dt1 = 50  # 遷移時間(ms)
 STZ = 15
 #STZ = 10
 # leg offsets
-leg_offsets = {'lf' : Vector(0, 0.0, 0),
-               'rf' : Vector(0, 0.0, 0),
-               'lb' : Vector(0.0, 0.0, 0),
-               'rb' : Vector(0.0, 0.0, 0), }
+leg_offsets = {'lf' : Vector(0, 0.0, 0.0),
+               'rf' : Vector(0, 0.0, 0.0),
+               'lb' : Vector(0.0, 0.0, 0.0),
+               'rb' : Vector(0.0, 0.0, 0.0), }
 
 # trim limits
 tx_limit = 15
@@ -45,6 +45,8 @@ def limited_tvec(x, y, z):
     return Vector(abs_limit(x, tx_limit),
                   abs_limit(y, ty_limit),
                   abs_limit(z, tz_limit))
+def limited_tvec_vec(vec):
+    return limited_tvec(vec[0], vec[1], vec[2])
 
 # rat
 rat1 = ratl.Ratl(name="rat1")
@@ -66,27 +68,30 @@ for key in ratl.LEG_KEYS:
     print " ", key, vecs_neutral[key]
     assert rc >= 0
 
-# set targets
+# rat1 functions
 def set_dvec_targets(dvecs):
     u"""
-     set ik targets for legs with delta vectors
+     set ik targets for legs with delta vectors from neutral positions.
     """
     for leg_key in dvecs:
         vec = vecs_neutral[leg_key] + dvecs[leg_key] + leg_offsets[leg_key]
         rc = rat1.get_legs()[leg_key].set_ik_target(vec)
         assert rc >= 0
 
-# get roll pitch yaw radians/degs
 def get_rpy_rads():
+    u"""get roll pitch yaw radians"""
     rc,x,y,z,w = rat1.get_gyro_curr_q()
     r1 = PyKDL.Rotation.Quaternion(x,y,z,w)
     roll, pitch, yaw = r1.GetRPY()
     return roll, pitch, yaw
 def get_rpy_degs():
+    u"""get roll pitch yaw degs"""
     roll, pitch, yaw = get_rpy_rads()
     return ratl.get_deg(roll), ratl.get_deg(pitch), ratl.get_deg(yaw)
-# delta z for legs to keep horizontal
-def get_dz_legs():
+def get_gyro_dz_legs():
+    u""" optimal delta z from current positions for each leg.
+    to keep horizontal, calculated from gyro data. 
+    """
     roll, pitch, yaw = get_rpy_rads()
     tan_pitch = - math.tan(pitch)
     tan_roll = math.tan(roll)
@@ -100,6 +105,9 @@ def get_dz_legs():
     return dz_legs
         
 # Routine starts
+# dvec: 各足先のbody座標系内目標位置ベクトルのneutral位置からの差分。
+# dvec0: dvec初期値。
+# 
 dvecs0 = {}        
 dvecs0["lf"] = Vector(0, 0, 0)
 dvecs0["rf"] = Vector(0, 0, 0)
@@ -121,9 +129,7 @@ rat1.get_body().set_tick(40.0)
 rat1.get_body().reset_time()
 
 # param
-tm_gain = 0.3 # trim / angle gain
-dx_pp = 0.3 # dp dr limit per position
-dx_c = 1.0  # dp dr limit constant
+KP = 0.25     # P制御Kp
 
 # walk
 r0,p0,y0 = get_rpy_degs()
@@ -135,17 +141,17 @@ dvecs = dvecs0
 for cyc1 in range(0, 200):
     print "cycle", cyc1
     for stroke in range(0, stroke_amt):
-        dz_legs = get_dz_legs()
+        dz_legs = get_gyro_dz_legs()
         r,p,y = get_rpy_degs()
         # set dvec
         for key in ratl.LEG_KEYS:
-            dvecs[key] = limited_tvec(0.0, 0.0, dz_legs[key])
+            dvecs[key] = limited_tvec_vec(dvecs[key] + KP * Vector(0.0, 0.0, dz_legs[key]))
         set_dvec_targets(dvecs)
         rat1.get_body().do_em_in(dt1)
         if stroke == 0:
             sys.stdout.write("st %2d rpy %5.1f %5.1f %5.1f" % (stroke,r,p,y))
-            sys.stdout.write(" dz_f_b %5.3f" % (dz_legs['lf'] - dz_legs['lb']))
-            sys.stdout.write(" dz_l_r %5.3f" % (dz_legs['lf'] - dz_legs['rf']))
+            sys.stdout.write(" dvec f_b %5.3f" % (dvecs['lf'][2] - dvecs['lb'][2]))
+            sys.stdout.write(" dvec l_r %5.3f" % (dvecs['lf'][2] - dvecs['rf'][2]))
             print ""
 
         
