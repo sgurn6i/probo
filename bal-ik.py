@@ -19,7 +19,13 @@ from PyKDL import Vector
 stroke_amt = 8 # 一周期のストローク数
 #dt1 = 100  # 遷移時間(ms)
 dt1 = 50  # 遷移時間(ms)
-KP = 0.1     # P制御Kp
+KP = 0.39  # P制御Kp
+KI = 0.065  # PID制御Ki
+KD = 0.5  # PID制御Kd
+T_RANGE = 4 # 離散時間記憶範囲
+SHIFT_HEIGHT = -10 # xy_shift時の不動点高さ(mm)
+#TAN_LIMIT = 1.0 # 上限 tanθ
+MV_LIMIT = 0.5 # manipulated variable mv 絶対値上限
 # leg offsets
 leg_offsets = {'lf' : Vector(0, 0.0, 0.0),
                'rf' : Vector(0, 0.0, 0.0),
@@ -97,7 +103,75 @@ def get_rpy_degs():
     u"""get roll pitch yaw degs"""
     roll, pitch, yaw = get_rpy_rads()
     return ratl.get_deg(roll), ratl.get_deg(pitch), ratl.get_deg(yaw)
-def get_gyro_dz_legs():
+def get_gyro_te():
+    u"""
+    現状gyro pitch roll値のmath.tan()値を返す。
+    (set point = 0) - (process variable tan(theta))
+    返り値:
+    tangent errors ['pitch', 'roll']
+    """
+    te = {}
+    roll, pitch, yaw = get_rpy_rads()
+    te['pitch'] = - math.tan(pitch)
+    te['roll'] = - math.tan(roll)
+    return te
+def update_te_mn(te_mn, te, pr = False):
+    u"""
+    te_mn を更新する。
+    引数:
+    te_mn['pitch', 'roll'][range(T_RANGE)] : tan角error履歴入出力
+    te['pitch', 'roll'] : 現在のtan角error 入力
+    """
+    for key in te_mn:
+        for ix in reversed(xrange(T_RANGE)):
+            if ix <= 0:
+                te_mn[key][0] = te[key]
+            else:
+                te_mn[key][ix] = te_mn[key][ix - 1]
+            if pr:
+                print "te[%5s][%d] = %.7f" % (key, ix, te_mn[key][ix])
+
+def get_curr_mv(prev_mv, te_mn, pr = False):
+    u"""
+    te_mnから manipulated variable mv を求める。PID制御値。
+    引数:
+    prev_mv['pitch', 'roll'] : 一つ前のmv。
+    te_mn['pitch', 'roll'][range(T_RANGE)] : tan角error履歴入力。
+    pr: Trueなら値プリント。
+    返り値:
+    mv['pitch', 'roll']
+    """
+    mv = {}
+    for key in prev_mv:
+        te_n = te_mn[key]
+        d_mv_p = KP * (te_n[0] - te_n[1])
+        d_mv_i = KI * te_n[0]
+        d_mv_d = KD * ((te_n[0] - te_n[1]) - (te_n[1] - te_n[2]))
+        d_mv = d_mv_p + d_mv_i + d_mv_d
+        mv[key] = abs_limit(prev_mv[key] + d_mv, MV_LIMIT)
+        if pr:
+            print ("%5s: dP %.7f dI %.7f dD %.7f MV %.5f"
+                   % (key, d_mv_p, d_mv_i, d_mv_d, mv[key]))
+    return mv
+
+def get_dz_legs_from_mv(mv):
+    u"""
+    manipulated variable mv から各足のZ方向移動量 dz_legsを求める。
+    引数:
+    mv['pitch', 'roll'] : 傾き角度のtangentで現したmanipulated variable.
+    返り値:
+    dz_legs[ratl.LEG_KEYS] : Z方向移動量(mm).
+    """
+    dz_legs = {}
+    for key in ratl.LEG_KEYS:
+        foot_vec, rc = rat1.get_legs()[key].get_fk_vec()
+        assert rc >= 0
+        dz_pitch = mv['pitch'] * foot_vec[0] # with X position
+        dz_roll = - mv['roll'] * foot_vec[1] # with Y position
+        dz_legs[key] = dz_pitch + dz_roll
+    return dz_legs
+
+def get_gyro_dz_legs(): # todo: obsolete
     u""" optimal delta z from current positions for each leg.
     to keep horizontal, calculated from gyro data. 
     """
@@ -156,16 +230,11 @@ def xy_shift(vecs, height = 10, pr = False):
         
 # Routine starts
 # dvec: 各足先のbody座標系内目標位置ベクトルのneutral位置からの差分。
-# dvec0: dvec初期値。
 # 
-dvecs0 = {}        
-dvecs0["lf"] = Vector(0, 0, 0)
-dvecs0["rf"] = Vector(0, 0, 0)
-dvecs0["lb"] = Vector(0, 0, 0)
-dvecs0["rb"] = Vector(0, 0, 0)
+# dvec0: dvec初期値。
+dvecs0  = {key:Vector(0, 0, 0) for key in ratl.LEG_KEYS}
 set_dvec_targets(dvecs0)
 rat1.get_body().do_em_in(dt1)
-#print "debug lf shin", rat1.get_legs()["lf"].get_mj("shin")
 
 # prompt
 aa = raw_input('press enter > ')
@@ -178,23 +247,28 @@ print "prepare_mpu6050 rc =", rc
 rat1.get_body().set_tick(40.0)
 rat1.get_body().reset_time()
 
-# walk
-r0,p0,y0 = get_rpy_degs()
-p_trim = 0.0
-p_trim_limit = tz_limit
-r_trim = 0.0
-r_trim_limit = tz_limit
+# start loop
+# te_mn[key][n] はkey方向における過去nステップ前のgyroで読んだ所の水平からのtangent角error。
+te_mn = {key:[0.0 for ix in xrange(T_RANGE)] for key in ('pitch', 'roll')}
+# manipulated variable。as 足の動きによる現状からのtan(theta)修正値。
+mv = {key:0.0 for key in ('pitch', 'roll')}
 dvecs = dvecs0
-for cyc1 in range(0, 200):
+for cyc1 in xrange(0, 200):
     print "cycle", cyc1
-    for stroke in range(0, stroke_amt):
-        dz_legs = get_gyro_dz_legs()
+    for stroke in xrange(0, stroke_amt):
+        te = get_gyro_te() # tangent errors ['pitch', 'roll']
+        update_te_mn(te_mn, te, stroke == 0)
+        # te_mnから mv['pitch', 'roll'] を求める。PID制御値。
+        mv = get_curr_mv(mv, te_mn, stroke == 0)
+        # mv から dz_legs[ratl.LEG_KEYS]を求める。
+        dz_legs = get_dz_legs_from_mv(mv)
+        #dz_legs = get_gyro_dz_legs()
         r,p,y = get_rpy_degs()
         # set dvec
         for key in ratl.LEG_KEYS:
-            dvecs[key] = limited_tvec_vec(dvecs[key] + KP * Vector(0.0, 0.0, dz_legs[key]))
+            dvecs[key] = limited_tvec_vec(dvecs[key] + Vector(0.0, 0.0, dz_legs[key]))
         vecs = get_foot_vecs_with_dvecs(dvecs)
-        s_vecs = xy_shift(vecs = vecs, height = -100, pr = (stroke == 0))
+        s_vecs = xy_shift(vecs = vecs, height = SHIFT_HEIGHT, pr = (stroke == 0))
         vecs = s_vecs
         set_ik_targets(vecs)
         rat1.get_body().do_em_in(dt1)
