@@ -19,11 +19,11 @@ from PyKDL import Vector
 stroke_amt = 8 # 一周期のストローク数
 #dt1 = 100  # 遷移時間(ms)
 dt1 = 50  # 遷移時間(ms)
-KP = 0.39  # P制御Kp
-KI = 0.065  # PID制御Ki
-KD = 0.5  # PID制御Kd
+KP = 0.36  # P制御Kp
+KI = 0.05  # PID制御Ki
+KD = 0.36  # PID制御Kd
 T_RANGE = 4 # 離散時間記憶範囲
-SHIFT_HEIGHT = -10 # xy_shift時の不動点高さ(mm)
+SHIFT_HEIGHT = 70 # xy_shift時の不動点高さ(mm)
 #TAN_LIMIT = 1.0 # 上限 tanθ
 MV_LIMIT = 0.5 # manipulated variable mv 絶対値上限
 # leg offsets
@@ -128,7 +128,7 @@ def update_te_mn(te_mn, te, pr = False):
                 te_mn[key][0] = te[key]
             else:
                 te_mn[key][ix] = te_mn[key][ix - 1]
-            if pr:
+            if pr and (ix == 0):
                 print "te[%5s][%d] = %.7f" % (key, ix, te_mn[key][ix])
 
 def get_curr_mv(prev_mv, te_mn, pr = False):
@@ -253,13 +253,14 @@ te_mn = {key:[0.0 for ix in xrange(T_RANGE)] for key in ('pitch', 'roll')}
 # manipulated variable。as 足の動きによる現状からのtan(theta)修正値。
 mv = {key:0.0 for key in ('pitch', 'roll')}
 dvecs = dvecs0
-for cyc1 in xrange(0, 200):
+for cyc1 in xrange(0, 50):
     print "cycle", cyc1
     for stroke in xrange(0, stroke_amt):
+        pr = (cyc1 == 3) # print flag
         te = get_gyro_te() # tangent errors ['pitch', 'roll']
-        update_te_mn(te_mn, te, stroke == 0)
+        update_te_mn(te_mn, te, pr)
         # te_mnから mv['pitch', 'roll'] を求める。PID制御値。
-        mv = get_curr_mv(mv, te_mn, stroke == 0)
+        mv = get_curr_mv(mv, te_mn, pr)
         # mv から dz_legs[ratl.LEG_KEYS]を求める。
         dz_legs = get_dz_legs_from_mv(mv)
         #dz_legs = get_gyro_dz_legs()
@@ -268,11 +269,11 @@ for cyc1 in xrange(0, 200):
         for key in ratl.LEG_KEYS:
             dvecs[key] = limited_tvec_vec(dvecs[key] + Vector(0.0, 0.0, dz_legs[key]))
         vecs = get_foot_vecs_with_dvecs(dvecs)
-        s_vecs = xy_shift(vecs = vecs, height = SHIFT_HEIGHT, pr = (stroke == 0))
+        s_vecs = xy_shift(vecs = vecs, height = SHIFT_HEIGHT, pr = pr)
         vecs = s_vecs
         set_ik_targets(vecs)
         rat1.get_body().do_em_in(dt1)
-        if stroke == 0:
+        if pr:
             sys.stdout.write("st %2d rpy %5.1f %5.1f %5.1f" % (stroke,r,p,y))
             sys.stdout.write(" dvec f_b %5.3f" % (dvecs['lf'][2] - dvecs['lb'][2]))
             sys.stdout.write(" dvec l_r %5.3f" % (dvecs['lf'][2] - dvecs['rf'][2]))

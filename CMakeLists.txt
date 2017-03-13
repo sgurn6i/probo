@@ -32,10 +32,13 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif(NOT CMAKE_BUILD_TYPE)
 set(PROJECT_NAME probo)
-set(PROBO_SRCS probo.cpp probopwm.cpp ppca9685.cpp pgyro.cpp pmpu6050.cpp)
+set(PROBO_SRCS probo.cpp probopwm.cpp ppca9685.cpp pgyro.cpp pmpu6050.cpp
+  pbbbgpio.cpp)
 #set(PROBO_SRCS probo.cpp probopwm.cpp ppca9685.cpp pgyro.cpp)
 set (MPU_DIR MPU6050-Pi)
 set (MPU_SRCS ${MPU_DIR}/I2Cdev.cpp ${MPU_DIR}/MPU6050.cpp)
+set (GPIO_DIR SimpleGPIO)
+set (GPIO_SRCS ${GPIO_DIR}/SimpleGPIO.cpp)
 # SWIG python
 set(PYTHON_IF_SRCS probopy.i)
 set_source_files_properties(${PYTHON_IF_SRCS} PROPERTIES  CPLUSPLUS ON)
@@ -43,7 +46,7 @@ set_source_files_properties(${PYTHON_IF_SRCS} PROPERTIES  SWIG_FLAGS "-includeal
 set_source_files_properties(${PYTHON_IF_SRCS} PROPERTIES  SWIG_FLAGS "-Wall")
 message("${PROJECT_NAME} CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 # probo core lib
-add_library(probo STATIC ${PROBO_SRCS} ${MPU_SRCS})
+add_library(probo STATIC ${PROBO_SRCS} ${MPU_SRCS} ${GPIO_SRCS})
 # PYTHON
 swig_add_module(probopy python ${PYTHON_IF_SRCS})
 swig_link_libraries(probopy probo ea1 orocos-kdl)

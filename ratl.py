@@ -25,10 +25,11 @@ def get_rad(deg):
 """
 LEG_KEYS = ('lf', 'rf', 'lb', 'rb')
 LEG_JOINT_KEYS = ('hip', 'thigh', 'shin')
-LEG_SW_KEYS = ('foot_sw')
+LEG_SW_KEYS = ('foot_sw', )
 JOINT_PARAMETER_KEYS = ('offset', 'mag', 'pos_min', 'pos_max')
-SW_PARAMETER_KEYS = ('on')
+SW_PARAMETER_KEYS = ('on', )
 PWMSERVO_KEYS = ('ch', 'svtype')
+GPIO_KEYS = ('gpio', ) # カンマ付けないと１個だけの時のlenが狂う。
 SEG_PARAMETER_KEYS = ('joint', 'tip')
 LEG_SEG_KEYS = ('body', 'hip', 'thigh', 'shin', 'foot_x', 'foot_y', 'foot_z')
 RPY_KEYS = ('roll', 'pitch', 'yaw')
@@ -110,7 +111,7 @@ class MdPwmservo(Md):
         Md.__init__(self, **kwargs)
 class MdLegPwmservo(Md):
     u"""Mdの内、keyがLEG_JOINT_KEYSに含まれていなければならないもの。
-    valueはMdJointのインスタンスに限定。
+    valueはMdPwmservoのインスタンスに限定。
      """
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
@@ -126,6 +127,36 @@ class MdRatPwmservo(Md):
             assert(isinstance(val, MdLegPwmservo))
             assert(key in LEG_KEYS)
         Md.__init__(self, **kwargs)
+
+# GPIO
+class MdGpio(Md):
+    u"""Md の内、key が GPIO_KEYS に含まれていなければならないもの。
+    さらに、そのすべての key を使用している物。
+    """
+    def __init__(self, **kwargs):
+        assert(len(kwargs) == len(GPIO_KEYS))
+        for key, val in kwargs.items():
+            assert(key in GPIO_KEYS)
+        Md.__init__(self, **kwargs)
+class MdLegSwGpio(Md):
+    u"""Mdの内、keyがLEG_SW_KEYSに含まれていなければならないもの。
+    valueはMdGpioのインスタンスに限定。
+     """
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            assert(isinstance(val, MdGpio))
+            assert(key in LEG_SW_KEYS)
+        Md.__init__(self, **kwargs)
+class MdRatSwGpio(Md):
+    u"""Md の内、key が LEG_KEYS に含まれていなければならないもの。
+    value が MdLegSwGpio のインスタンスでなければならない。
+    """
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            assert(isinstance(val, MdLegSwGpio))
+            assert(key in LEG_KEYS)
+        Md.__init__(self, **kwargs)
+        
 
 # segment
 class MdSeg(Md):
@@ -231,6 +262,16 @@ MD_RAT_PWMSERVO1 = MdRatPwmservo(
                        shin  = MdPwmservo(ch=14, svtype=probopy.PWM_SV_RS304MD)),
     )
 
+# rat1 のデフォルト MdRatSwGpio インスタンス。
+# 各SW(スイッチ)の gpio パラメータ。
+MD_RAT_SW_GPIO1 = MdRatSwGpio(
+    lf = MdLegSwGpio(foot_sw = MdGpio(gpio = 45)),
+    lb = MdLegSwGpio(foot_sw = MdGpio(gpio = 44)),
+    rf = MdLegSwGpio(foot_sw = MdGpio(gpio = 23)),
+    rb = MdLegSwGpio(foot_sw = MdGpio(gpio = 26)),
+    )
+                     
+        
 # leg 各segmentの長さ(mm)
 #leg_seg_lens = { 'hip': 0.0, 'thigh': 58.0, 'shin': 80.0 }
 
@@ -360,6 +401,7 @@ class Leg:
         self._name = name
         self._mjs = {}
         self._ctj = ctj
+        self._sws = {} # gpio switches
         # Todo: mj_dict item数チェック
         for key in md_leg_joint:
             md = md_leg_joint[key]
@@ -484,7 +526,6 @@ class Leg:
                 j_array[ix_j] = get_rad(pos)
                 ix_j += 1
         return j_array
-        
     def get_fk_vec(self):
         u""" get current forward kinetic position vector.
         Returns:
@@ -544,7 +585,21 @@ class Leg:
         if rc >= 0:
             self.target(pos_dict)
         return rc
-
+    def set_sw_gpio(self, gpioins):
+        u"""GPIO スイッチ設定。
+        Arguments:
+          gpioins: LEG_SW_KEYS をkeyとし、probopy.Gpioinインスタンスを値とするdict入力。
+        """
+        for key in gpioins:
+            self._sws[key] = gpioins[key]
+    def get_sw_val(self, sw_key):
+        u"""GPIOスイッチの状態を得る。
+        Arguments:
+          sw_key: LEG_SW_KEYSメンバ。スイッチを指定するキー入力。
+        Returns:
+          現在のスイッチ状態。
+        """
+        return self._sws[sw_key].get_val()
 # 四本足 rat with legs クラス
 class Ratl:
     u""" 通常4本の Leg からなる rat のクラス。
@@ -597,7 +652,7 @@ class Ratl:
                 self._pwmservos[leg_key] = {}
                 for joint_key in md_rat_pwmservo[leg_key]:
                     joint = self._legs[leg_key].get_mj(joint_key).get_joint()
-                    dargs = MD_RAT_PWMSERVO1[leg_key][joint_key]
+                    dargs = MD_RAT_PWMSERVO1[leg_key][joint_key] # 2017-03-13 16:49:56 違う？
                     pwmservo = probopy.Pwmservo(dargs['ch'], dargs['svtype'])
                     self._pwmservos[leg_key][joint_key] = pwmservo
                     rc = joint.attach_hwj(pwmservo)
@@ -685,7 +740,30 @@ class Ratl:
         target_hts = RAT_NEUTRAL_SERVO_POSITIONS
         for leg_key in LEG_KEYS:
             self.get_legs()[leg_key].target(**target_hts)
-
+    def set_sw_gpio(self, md_rat_sw_gpio=MD_RAT_SW_GPIO1):
+        u"""GPIO スイッチ設定。
+        Arguments:
+        md_rat_sw_gpio : MdRatSwGpioインスタンス。各SW(スイッチ)の gpio パラメータ。
+        Returns:
+        probopy.EA1_OK, or probopy.ea1_status_enum。
+        """
+        assert(isinstance(md_rat_sw_gpio, MdRatSwGpio))
+        for key in md_rat_sw_gpio:
+            if key in LEG_KEYS:
+                md_leg_sw_gpio = md_rat_sw_gpio[key]
+                gpioins = {}
+                for sw_key in md_leg_sw_gpio:
+                    gpioin = probopy.BbbGpioin(self._name + "_gpio_" + key + "_" + sw_key)
+                    rc = gpioin.init(md_leg_sw_gpio[sw_key]['gpio'])
+                    if rc == probopy.EA1_OK:
+                        rc = self._body.add_child(gpioin)
+                    if rc == probopy.EA1_OK:
+                        gpioins[sw_key] = gpioin
+                    if rc != probopy.EA1_OK:
+                        return rc
+                    self.get_legs()[key].set_sw_gpio(gpioins)
+        return rc
+    
 def create_rat1(name="rat1"):
     u""" MD_RAT_JOINT1をジョイントパラメータとするRatlインスタンスを生成して返す。
     """
@@ -733,6 +811,8 @@ if __name__ == '__main__':
         vecs_zero[key], rc = rat1.get_legs()[key].get_fk_vec()
         print " ", key, vecs_zero[key]
         assert rc >= 0
+    # GPIO switches
+    rat1.set_sw_gpio()
     # prompt
     aa = raw_input('press enter > ')
     # prepare gyro
@@ -755,6 +835,10 @@ if __name__ == '__main__':
     print "fk xyz lf", vec1
     print "fk delta xyz lf  ", vec1 - vecs_zero['lf']
     rat1.get_body().do_em_in(dt1) # pause
+    # gpio sw
+    print "gpio foot_sw:"
+    for key in LEG_KEYS:
+        print key, rat1.get_legs()[key].get_sw_val('foot_sw')
     # ik
     vec_offset = Vector(-5.0, 0, -90.0 - vecs_zero['lf'][2])
     vecs_neutral = set_ik_targets(rat1, vecs_zero, vec_offset)

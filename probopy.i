@@ -12,6 +12,8 @@
   #include "ppca9685.hpp"
   #include "pgyro.hpp"
   #include "pmpu6050.hpp"
+  #include "pgpio.hpp"
+  #include "pbbbgpio.hpp"
 %}
 %include <std_string.i>
 %include "ea1/ea1_benri.h"
@@ -25,3 +27,5 @@
 %include "ppca9685.hpp"
 %include "pgyro.hpp"
 %include "pmpu6050.hpp"
+%include "pgpio.hpp"
+%include "pbbbgpio.hpp"
