@@ -26,6 +26,7 @@ T_RANGE = 4 # 離散時間記憶範囲
 SHIFT_HEIGHT = 70 # xy_shift時の不動点高さ(mm)
 #TAN_LIMIT = 1.0 # 上限 tanθ
 MV_LIMIT = 0.5 # manipulated variable mv 絶対値上限
+FLOATING_DDZ = 2.0 # trim_floating時dz変化量(mm)
 # leg offsets
 leg_offsets = {'lf' : Vector(0, 0.0, 0.0),
                'rf' : Vector(0, 0.0, 0.0),
@@ -171,21 +172,6 @@ def get_dz_legs_from_mv(mv):
         dz_legs[key] = dz_pitch + dz_roll
     return dz_legs
 
-def get_gyro_dz_legs(): # todo: obsolete
-    u""" optimal delta z from current positions for each leg.
-    to keep horizontal, calculated from gyro data. 
-    """
-    roll, pitch, yaw = get_rpy_rads()
-    tan_pitch = - math.tan(pitch)
-    tan_roll = math.tan(roll)
-    dz_legs = {}
-    for key in ratl.LEG_KEYS:
-        foot_vec, rc = rat1.get_legs()[key].get_fk_vec()
-        assert rc >= 0
-        dz_pitch = tan_pitch * foot_vec[0] # with X position
-        dz_roll = tan_roll * foot_vec[1] # with Y position
-        dz_legs[key] = dz_pitch + dz_roll
-    return dz_legs
 def xy_shift(vecs, height = 10, pr = False):
     u""" 揺れ低減のために dvecs を XY方向にシフトする。
     入力
@@ -227,7 +213,48 @@ def xy_shift(vecs, height = 10, pr = False):
         s_vecs[key][1] = vecs_neutral[key][1] + shift_y
         s_vecs[key][0] = vecs_neutral[key][0] + shift_x
     return s_vecs
-        
+def get_floating_feet_amt():
+    u""" 浮き上がってる足の数を返す。"""
+    floating_amt = 0;
+    for key in ratl.LEG_KEYS:
+        val = rat1.get_legs()[key].get_sw_val('foot_sw')
+        if val == 1:
+            floating_amt += 1
+    return floating_amt
+def reset_pid(mv, te_mn):
+    u"""mv, te_mnをリセット"""
+    for key in mv:
+        mv[key] = 0
+        for ix in range(T_RANGE):
+            te_mn[key][ix] = 0.0
+def reset_dz(dz_legs):
+    u"""dz_legsをリセット"""
+    for key in ratl.LEG_KEYS:
+        dz_legs[key] = 0.0
+
+def trim_floating_dvecs(dvecs, floating_amt):
+    u"""浮いてる足がある場合はdvecsを相互に調整する"""
+    if floating_amt > 0:
+        dvec_z_sum = 0.0 # 足のdvec Z 成分値の合計。
+        for key in dvecs:
+            sw_val = rat1.get_legs()[key].get_sw_val('foot_sw')
+            if sw_val == 0:
+                dvec_z_sum += dvecs[key][2]
+        # 全部浮いていれば真ん中方向に持っていく。
+        # 全体的に足が下がっていれば、浮いていない方を上げる。
+        # そうでなければ、浮いている方を下げる。
+        for key in dvecs:
+            sw_val = rat1.get_legs()[key].get_sw_val('foot_sw')
+            if (floating_amt == len(ratl.LEG_KEYS)):
+                if (dvecs[key][2] < - FLOATING_DDZ):
+                    dvecs[key][2] += FLOATING_DDZ
+                elif (dvecs[key][2] > FLOATING_DDZ):
+                    dvecs[key][2] -= FLOATING_DDZ
+            elif (sw_val == 0) and (dvec_z_sum < 0):
+                dvecs[key][2] += FLOATING_DDZ
+            elif (sw_val == 1) and (dvec_z_sum >= 0):
+                dvecs[key][2] -= FLOATING_DDZ
+
 # Routine starts
 # dvec: 各足先のbody座標系内目標位置ベクトルのneutral位置からの差分。
 # 
@@ -235,6 +262,8 @@ def xy_shift(vecs, height = 10, pr = False):
 dvecs0  = {key:Vector(0, 0, 0) for key in ratl.LEG_KEYS}
 set_dvec_targets(dvecs0)
 rat1.get_body().do_em_in(dt1)
+# GPIO switches
+rat1.set_sw_gpio()
 
 # prompt
 aa = raw_input('press enter > ')
@@ -253,27 +282,37 @@ te_mn = {key:[0.0 for ix in xrange(T_RANGE)] for key in ('pitch', 'roll')}
 # manipulated variable。as 足の動きによる現状からのtan(theta)修正値。
 mv = {key:0.0 for key in ('pitch', 'roll')}
 dvecs = dvecs0
-for cyc1 in xrange(0, 50):
+for cyc1 in xrange(0, 500):
     print "cycle", cyc1
     for stroke in xrange(0, stroke_amt):
-        pr = (cyc1 == 3) # print flag
+        pr = (stroke == 3) # print flag
         te = get_gyro_te() # tangent errors ['pitch', 'roll']
-        update_te_mn(te_mn, te, pr)
+        update_te_mn(te_mn, te, False)
         # te_mnから mv['pitch', 'roll'] を求める。PID制御値。
         mv = get_curr_mv(mv, te_mn, pr)
         # mv から dz_legs[ratl.LEG_KEYS]を求める。
         dz_legs = get_dz_legs_from_mv(mv)
-        #dz_legs = get_gyro_dz_legs()
-        r,p,y = get_rpy_degs()
+        # 足の浮き上がりチェック。
+        floating_amt = get_floating_feet_amt()
+        # 2本以上浮いている時はpid中断する
+        if floating_amt >= 2:
+            reset_pid(mv, te_mn)
+            reset_dz(dz_legs)
         # set dvec
         for key in ratl.LEG_KEYS:
             dvecs[key] = limited_tvec_vec(dvecs[key] + Vector(0.0, 0.0, dz_legs[key]))
+        # 浮いてる足がある時は、dvecsを浮かない方向で調整する。
+        if floating_amt >= 1:
+            trim_floating_dvecs(dvecs, floating_amt)
         vecs = get_foot_vecs_with_dvecs(dvecs)
-        s_vecs = xy_shift(vecs = vecs, height = SHIFT_HEIGHT, pr = pr)
+        s_vecs = xy_shift(vecs = vecs, height = SHIFT_HEIGHT, pr = False)
         vecs = s_vecs
         set_ik_targets(vecs)
         rat1.get_body().do_em_in(dt1)
         if pr:
+            if floating_amt >= 1:
+                print "floating %d feet" % (floating_amt)
+            r,p,y = get_rpy_degs()
             sys.stdout.write("st %2d rpy %5.1f %5.1f %5.1f" % (stroke,r,p,y))
             sys.stdout.write(" dvec f_b %5.3f" % (dvecs['lf'][2] - dvecs['lb'][2]))
             sys.stdout.write(" dvec l_r %5.3f" % (dvecs['lf'][2] - dvecs['rf'][2]))
